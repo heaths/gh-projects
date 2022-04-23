@@ -85,8 +85,8 @@ func list() (err error) {
 		return
 	}
 
-	organizationProjectsData := struct {
-		Data models.OrganizationProjects
+	repositoryProjectsData := struct {
+		data models.RepositoryProjects
 	}{}
 
 	repo, err := gh.CurrentRepository()
@@ -94,22 +94,22 @@ func list() (err error) {
 		return
 	}
 
-	organizationProjectsVars := map[string]interface{}{
+	repositoryProjectsVars := map[string]interface{}{
 		"owner": repo.Owner(),
 		"name":  repo.Name(),
 		"first": 10,
 	}
 
-	err = client.Do(listOrganizationProjectsQuery, organizationProjectsVars, &organizationProjectsData)
+	err = client.Do(listRepositoryProjectsQuery, repositoryProjectsVars, &repositoryProjectsData)
 	if err != nil {
 		return
 	}
 
-	for _, project := range organizationProjectsData.Data.Organization.Projects.Nodes {
+	for _, project := range repositoryProjectsData.data.Repository.Projects.Nodes {
 		fmt.Printf("#%d\t%s\t%s", project.Number, project.Title, project.ID)
 	}
 
-	for _, project := range organizationProjectsData.Data.Organization.ProjectsNext.Nodes {
+	for _, project := range repositoryProjectsData.data.Repository.ProjectsNext.Nodes {
 		fmt.Printf("#%d\t%s\t%s", project.Number, project.Title, project.ID)
 	}
 

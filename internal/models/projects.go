@@ -12,27 +12,25 @@ func (p Project) IsBeta() bool {
 }
 
 type OrganizationProjects struct {
-	Organization projects
+	Organization projects `json:"organization"`
 }
 
 type RepositoryProjects struct {
-	Repository projects
+	Repository projects `json:"repository"`
 }
 
 type projects struct {
-	Projects struct {
-		TotalCount int
-		Nodes      []Project
-		PageInfo   pageInfo
-	}
-	ProjectsNext struct {
-		TotalCount int
-		Nodes      []Project
-		PageInfo   pageInfo
-	}
+	Projects     projectsNode `json:"projects"`
+	ProjectsNext projectsNode `json:"projectsNext"`
+}
+
+type projectsNode struct {
+	TotalCount int       `json:"totalCount"`
+	Nodes      []Project `json:"nodes"`
+	PageInfo   pageInfo  `json:"pageInfo"`
 }
 
 type pageInfo struct {
-	HasNextPage bool
-	EndCursor   string
+	HasNextPage bool   `json:"hasNextPage"`
+	EndCursor   string `json:"endCursor"`
 }
