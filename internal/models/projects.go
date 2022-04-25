@@ -2,9 +2,9 @@ package models
 
 type Project struct {
 	Type   string `json:"__typename"`
-	ID     string `json:"id"`
-	Number int    `json:"number"`
-	Title  string `json:"title"`
+	ID     string
+	Number int
+	Title  string
 }
 
 func (p Project) IsBeta() bool {
@@ -12,25 +12,25 @@ func (p Project) IsBeta() bool {
 }
 
 type OrganizationProjects struct {
-	Organization projects `json:"organization"`
+	Organization projects
 }
 
 type RepositoryProjects struct {
-	Repository projects `json:"repository"`
+	Repository projects
 }
 
 type projects struct {
-	Projects     projectsNode `json:"projects"`
-	ProjectsNext projectsNode `json:"projectsNext"`
+	Projects     projectsNode
+	ProjectsNext projectsNode
 }
 
 type projectsNode struct {
-	TotalCount int       `json:"totalCount"`
-	Nodes      []Project `json:"nodes"`
-	PageInfo   pageInfo  `json:"pageInfo"`
+	TotalCount int
+	Nodes      []Project
+	PageInfo   pageInfo
 }
 
 type pageInfo struct {
-	HasNextPage bool   `json:"hasNextPage"`
-	EndCursor   string `json:"endCursor"`
+	HasNextPage bool
+	EndCursor   string
 }

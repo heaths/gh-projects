@@ -11,6 +11,7 @@ import (
 const listOrganizationProjectsQuery = `query OrganizationProjects($owner: String!, $first: Int!, $after: String) {
 	organization(login: $owner) {
 		projects(first: $first, after: $after) {
+			totalCount
 			nodes {
 				__typename
 				id
@@ -23,6 +24,7 @@ const listOrganizationProjectsQuery = `query OrganizationProjects($owner: String
 			}
 		}
 		projectsNext(first: $first, after: $after) {
+			totalCount
 			nodes {
 				__typename
 				id
@@ -40,6 +42,7 @@ const listOrganizationProjectsQuery = `query OrganizationProjects($owner: String
 const listRepositoryProjectsQuery = `query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: String) {
 	repository(owner: $owner, name: $name) {
 		projects(first: $first, after: $after) {
+			totalCount
 			nodes {
 				__typename
 				id
@@ -52,6 +55,7 @@ const listRepositoryProjectsQuery = `query RepositoryProjects($owner: String!, $
 			}
 		}
 		projectsNext(first: $first, after: $after) {
+			totalCount
 			nodes {
 				__typename
 				id
@@ -85,15 +89,12 @@ func list() (err error) {
 		return
 	}
 
-	repositoryProjectsData := struct {
-		data models.RepositoryProjects
-	}{}
-
 	repo, err := gh.CurrentRepository()
 	if err != nil {
 		return
 	}
 
+	var repositoryProjectsData models.RepositoryProjects
 	repositoryProjectsVars := map[string]interface{}{
 		"owner": repo.Owner(),
 		"name":  repo.Name(),
@@ -105,12 +106,12 @@ func list() (err error) {
 		return
 	}
 
-	for _, project := range repositoryProjectsData.data.Repository.Projects.Nodes {
-		fmt.Printf("#%d\t%s\t%s", project.Number, project.Title, project.ID)
+	for _, project := range repositoryProjectsData.Repository.Projects.Nodes {
+		fmt.Printf("#%d\t%s\t%s\n", project.Number, project.Title, project.ID)
 	}
 
-	for _, project := range repositoryProjectsData.data.Repository.ProjectsNext.Nodes {
-		fmt.Printf("#%d\t%s\t%s", project.Number, project.Title, project.ID)
+	for _, project := range repositoryProjectsData.Repository.ProjectsNext.Nodes {
+		fmt.Printf("#%d\t%s\t%s\n", project.Number, project.Title, project.ID)
 	}
 
 	return nil
