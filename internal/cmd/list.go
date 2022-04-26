@@ -73,7 +73,7 @@ const listRepositoryProjectsQuery = `query RepositoryProjects($owner: String!, $
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List organization projects",
+		Short: "List projects",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return list()
