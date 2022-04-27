@@ -1,14 +1,33 @@
 name: release
+
 on:
   push:
     tags:
-      - "v*"
+    - 'v*'
+
 permissions:
   contents: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GOVERSION: '1.18'
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: cli/gh-extension-precompile@v1
+    - name: checkout
+      uses: actions/checkout@v2
+    - name: install go ${{ env.GOVERSION }}
+      uses: actions/setup-go@v2.1.4
+      with:
+        go-version: ${{ env.GOVERSION }}
+    - name: test
+      run: go test ./...
+    - name: publish
+      uses: cli/gh-extension-precompile@v1
+      with:
+        go_version: ${{ env.GOVERSION }}
