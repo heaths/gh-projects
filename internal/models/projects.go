@@ -5,6 +5,8 @@ type Project struct {
 	ID     string
 	Number int
 	Title  string
+	State  string
+	URL    string
 }
 
 func (p Project) IsBeta() bool {
@@ -20,11 +22,11 @@ type RepositoryProjects struct {
 }
 
 type projects struct {
-	Projects     projectsNode
-	ProjectsNext projectsNode
+	Projects     ProjectsNode
+	ProjectsNext ProjectsNode
 }
 
-type projectsNode struct {
+type ProjectsNode struct {
 	TotalCount int
 	Nodes      []Project
 	PageInfo   pageInfo

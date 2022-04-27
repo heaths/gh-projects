@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
 	github.com/cli/shurcooL-graphql v0.0.1 // indirect
 	github.com/henvic/httpretty v0.0.6 // indirect
