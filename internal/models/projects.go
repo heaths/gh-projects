@@ -13,10 +13,6 @@ func (p Project) IsBeta() bool {
 	return p.Type == "ProjectNext"
 }
 
-type OrganizationProjects struct {
-	Organization projects
-}
-
 type RepositoryProjects struct {
 	Repository projects
 }
