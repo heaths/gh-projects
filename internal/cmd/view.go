@@ -19,7 +19,7 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 		Use:   "view <number>",
 		Short: "View a project",
 		Long: heredoc.Doc(`
-		View information about a project including its columns.
+		View information about a project and its fields.
 
 		The number argument can begin with a "#" symbol.
 		`),
@@ -38,15 +38,12 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.beta, "beta", false, "The number specifies a beta project")
-
 	return cmd
 }
 
 type viewOptions struct {
 	GlobalOptions
 
-	beta   bool
 	number uint32
 }
 
@@ -63,54 +60,17 @@ func view(opts *viewOptions) (err error) {
 		"first":  30,
 	}
 
-	query := viewRepositoryProjectQuery
-	if opts.beta {
-		query = viewRepositoryProjectNextQuery
-	}
-
 	var data models.RepositoryProject
-	err = client.Do(query, vars, &data)
+	err = client.Do(viewRepositoryProjectNextQuery, vars, &data)
 	if err != nil {
 		return
 	}
 
-	var project models.Project
-	if opts.beta {
-		project = data.Repository.ProjectNext
-	} else {
-		project = data.Repository.Project
-	}
-
+	project := data.Repository.ProjectNext
 	err = template.Project(os.Stdout, &project)
 
 	return
 }
-
-const viewRepositoryProjectQuery = `
-query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
-	repository(name: $name, owner: $owner) {
-		project(number: $number) {
-			__typename
-			id
-			number
-			title: name
-			body
-			creator {
-				login
-			}
-			createdAt
-			state
-			url
-			columns(first: $first) {
-				nodes {
-					id
-					name
-				}
-			}
-		}
-	}
-}
-`
 
 const viewRepositoryProjectNextQuery = `
 query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
@@ -120,7 +80,7 @@ query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
 			id
 			number
 			title
-			body: description
+			description
 			creator {
 				login
 			}

@@ -1,5 +1,7 @@
 package template
 
+// cSpell:ignore templ
+
 import (
 	"io"
 	"text/template"
@@ -16,16 +18,22 @@ func init() {
 
 	template.Must(templ.New("project").Parse(heredoc.Doc(`
 	{{.Title}} #{{.Number}}
-	{{if .State}}{{.State}}{{else}}{{template "public" .}}{{end}} • {{.Creator.Login}} opened {{.CreatedAt}}
-	{{if .Body}}
-
-	{{.Body}}
-
+	{{template "public" .}} • {{.Creator.Login}} opened {{.CreatedAt}}
+	{{if .Description}}
+	{{.Description}}
 	{{end}}
 	View this project on GitHub: {{.URL}}
+	`)))
+
+	template.Must(templ.New("projects").Parse(heredoc.Doc(`
+	{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{template "public" .}}{{"\t"}}{{.ID}}{{end}}
 	`)))
 }
 
 func Project(w io.Writer, project *models.Project) error {
 	return templ.ExecuteTemplate(w, "project", project)
+}
+
+func Projects(w io.Writer, projects []models.Project) error {
+	return templ.ExecuteTemplate(w, "projects", projects)
 }

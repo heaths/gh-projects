@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/cli/go-gh"
-	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
+	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +23,6 @@ func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.search, "search", "S", "", "Search projects.")
-	StringEnumFlag(cmd, &opts.state, "state", "s", "open", []string{"open", "closed", "all"}, "Filter by state")
 
 	return cmd
 }
@@ -34,7 +31,6 @@ type listOptions struct {
 	GlobalOptions
 
 	search string
-	state  string
 }
 
 func list(opts *listOptions) (err error) {
@@ -53,59 +49,17 @@ func list(opts *listOptions) (err error) {
 		vars["search"] = opts.search
 	}
 
-	if opts.HasState() {
-		vars["states"] = []string{strings.ToUpper(opts.state)}
-	}
-
-	projects, err := listRepositoryProjects(
-		client,
-		listRepositoryProjectsQuery,
-		vars,
-		func(repo *models.RepositoryProjects) *models.ProjectsNode {
-			return &repo.Repository.Projects
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	delete(vars, "states")
-	projectsNext, err := listRepositoryProjects(
-		client,
-		listRepositoryProjectsNextQuery,
-		vars,
-		func(repo *models.RepositoryProjects) *models.ProjectsNode {
-			return &repo.Repository.ProjectsNext
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	for _, project := range projects {
-		fmt.Fprintf(w, "#%d\t%s\t%s\n", project.Number, project.Title, project.ID)
-	}
-	for _, project := range projectsNext {
-		fmt.Fprintf(w, "#%d\t%s\t%s\n", project.Number, project.Title, project.ID)
-	}
-	w.Flush()
-
-	return nil
-}
-
-func listRepositoryProjects(client api.GQLClient, query string, vars map[string]interface{}, nodes func(*models.RepositoryProjects) *models.ProjectsNode) ([]models.Project, error) {
 	var data models.RepositoryProjects
 	var projects []models.Project
 	i := 0
 
 	for {
-		err := client.Do(query, vars, &data)
+		err = client.Do(listRepositoryProjectsNextQuery, vars, &data)
 		if err != nil {
-			return nil, err
+			return
 		}
 
-		projectsNode := nodes(&data)
+		projectsNode := data.Repository.ProjectsNext
 		if projects == nil {
 			projects = make([]models.Project, projectsNode.TotalCount)
 		}
@@ -122,30 +76,13 @@ func listRepositoryProjects(client api.GQLClient, query string, vars map[string]
 		}
 	}
 
-	return projects, nil
-}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	defer w.Flush()
 
-const listRepositoryProjectsQuery = `
-query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: String, $search: String, $states: [ProjectState!]) {
-	repository(owner: $owner, name: $name) {
-		projects(first: $first, after: $after, search: $search, states: $states) {
-			totalCount
-			nodes {
-				__typename
-				id
-				number
-				title: name
-				state
-				url
-			}
-			pageInfo {
-				hasNextPage
-				endCursor
-			}
-		}
-	}
+	template.Projects(w, projects)
+
+	return nil
 }
-`
 
 const listRepositoryProjectsNextQuery = `
 query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: String, $search: String) {
@@ -157,6 +94,7 @@ query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: 
 				id
 				number
 				title
+				public
 				url
 			}
 			pageInfo {
@@ -167,7 +105,3 @@ query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: 
 	}
 }
 `
-
-func (opts listOptions) HasState() bool {
-	return opts.state != "all"
-}

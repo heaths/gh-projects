@@ -1,0 +1,22 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "words": [
+        "precompile"
+    ],
+    "overrides": [
+        {
+            "filename": "**/.github/**/{*.yml,*.yaml}",
+            "words": [
+                "golangci",
+                "goversion"
+            ]
+        },
+        {
+            "filename": "**/*.md",
+            "dictionaries": [
+                "golang"
+            ]
+        }
+    ]
+}
