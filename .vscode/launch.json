@@ -8,7 +8,9 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "list"
+                "view",
+                "1",
+                "--beta"
             ]
         }
     ]

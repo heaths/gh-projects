@@ -36,17 +36,17 @@ func main() {
 				}
 			}
 
-			cmd.SilenceUsage = true
-
 			opts.Repo = repo
 			return
 		},
+		SilenceUsage: true,
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&repoFlag, "repo", "R", "", "Select another repository to use using the [HOST/]OWNER/REPO format.")
 	rootCmd.PersistentFlags().BoolVarP(&opts.Verbose, "verbose", "v", false, "Show verbose output.")
 
 	rootCmd.AddCommand(cmd.NewListCmd(opts))
+	rootCmd.AddCommand(cmd.NewViewCmd(opts))
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
