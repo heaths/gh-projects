@@ -88,12 +88,11 @@ query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: 
 		projectsNext(first: $first, after: $after, query: $search) {
 			totalCount
 			nodes {
-				__typename
 				id
 				number
 				title
 				public
-				url
+				createdAt
 			}
 			pageInfo {
 				hasNextPage

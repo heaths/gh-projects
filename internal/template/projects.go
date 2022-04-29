@@ -26,7 +26,7 @@ func init() {
 	`)))
 
 	template.Must(templ.New("projects").Parse(heredoc.Doc(`
-	{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{template "public" .}}{{"\t"}}{{.ID}}{{end}}
+	{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{.CreatedAt}}{{"\t"}}{{template "public" .}}{{"\t"}}{{.ID}}{{end}}
 	`)))
 }
 
