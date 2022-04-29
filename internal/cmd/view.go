@@ -66,17 +66,18 @@ func view(opts *viewOptions) (err error) {
 		return
 	}
 
-	project := data.Repository.ProjectNext
-	err = template.Project(os.Stdout, &project)
+	t, err := template.New(os.Stdout)
+	if err != nil {
+		return
+	}
 
-	return
+	return t.Project(data.Repository.ProjectNext)
 }
 
 const viewRepositoryProjectNextQuery = `
 query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
-			__typename
 			id
 			number
 			title
@@ -87,10 +88,40 @@ query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
 			createdAt
 			public
 			url
-			columns: fields(first: $first) {
+			items(first: $first) {
 				nodes {
-					id
-					name
+				id
+				content {
+					... on DraftIssue {
+						id
+						title
+						creator {
+							login
+						}
+						createdAt
+					}
+					... on Issue {
+						id
+						number
+						title
+						state
+						creator: author {
+							login
+						}
+						createdAt
+						url
+					}
+					... on PullRequest {
+						id
+						number
+						title
+						creator: author {
+							login
+						}
+						createdAt
+						url
+						}
+					}
 				}
 			}
 		}
