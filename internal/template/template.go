@@ -7,6 +7,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/heaths/gh-projects/internal/models"
+	"github.com/heaths/go-console/pkg/colorscheme"
 )
 
 type Template struct {
@@ -15,26 +16,34 @@ type Template struct {
 }
 
 func New(w io.Writer) (*Template, error) {
-	templ, err := tt.New("visibility").Parse(`{{if .Public}}PUBLIC{{else}}PRIVATE{{end}}`)
-	if err != nil {
+	templ := tt.New("")
+
+	cs := colorscheme.New()
+	templ.Funcs(map[string]interface{}{
+		"ago":  ago,
+		"bold": cs.ColorFunc("white+b"),
+		"color": func(color, text string) string {
+			return cs.ColorFunc(color)(text)
+		},
+		"dim": cs.ColorFunc("white+d"),
+	})
+
+	if _, err := templ.New("visibility").Parse(heredoc.Doc(`
+		{{if .Public}}{{color "magenta" "PUBLIC"}}{{else}}{{color "magenta" "PRIVATE"}}{{end}}`)); err != nil {
 		return nil, err
 	}
-
-	templ.Funcs(map[string]interface{}{
-		"ago": ago,
-	})
 
 	return &Template{t: templ, w: w}, nil
 }
 
 func (t *Template) Project(project models.Project) error {
 	if _, err := t.t.New("project").Parse(heredoc.Doc(`
-		{{.Title}} #{{.Number}}
+		{{bold .Title}} #{{.Number}}
 		{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
 		{{if .Description}}
-		{{.Description}}
+		  {{.Description}}
 		{{end}}
-		View this project on GitHub: {{.URL}}
+		{{printf "View this project on GitHub: %s" .URL | dim}}
 	`)); err != nil {
 		return err
 	}
@@ -44,7 +53,7 @@ func (t *Template) Project(project models.Project) error {
 
 func (t *Template) Projects(projects []models.Project) error {
 	if _, err := t.t.New("projects").Parse(heredoc.Doc(`
-		{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{.ID}}{{end}}
+		{{range .}}{{printf "#%d" .Number | color "green"}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{.ID}}{{end}}
 	`)); err != nil {
 		return err
 	}
