@@ -7,12 +7,15 @@ import (
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/repository"
 	"github.com/heaths/gh-projects/internal/cmd"
+	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	var repoFlag string
-	opts := &cmd.GlobalOptions{}
+	opts := &cmd.GlobalOptions{
+		Console: console.System(),
+	}
 	rootCmd := &cobra.Command{
 		Use:   "projects",
 		Short: "Manage repository projects",

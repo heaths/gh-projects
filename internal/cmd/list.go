@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"os"
 	"text/tabwriter"
 
 	"github.com/cli/go-gh"
@@ -76,7 +75,7 @@ func list(opts *listOptions) (err error) {
 		}
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(opts.Console, 0, 0, 2, ' ', 0)
 	defer w.Flush()
 
 	t, err := template.New(w)

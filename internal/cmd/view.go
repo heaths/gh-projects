@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -66,7 +65,7 @@ func view(opts *viewOptions) (err error) {
 		return
 	}
 
-	t, err := template.New(os.Stdout)
+	t, err := template.New(opts.Console)
 	if err != nil {
 		return
 	}
@@ -75,7 +74,7 @@ func view(opts *viewOptions) (err error) {
 }
 
 const viewRepositoryProjectNextQuery = `
-query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
+query Project($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
@@ -88,42 +87,6 @@ query Project($owner: String!, $name: String!, $number: Int!, $first: Int!) {
 			createdAt
 			public
 			url
-			items(first: $first) {
-				nodes {
-				id
-				content {
-					... on DraftIssue {
-						id
-						title
-						creator {
-							login
-						}
-						createdAt
-					}
-					... on Issue {
-						id
-						number
-						title
-						state
-						creator: author {
-							login
-						}
-						createdAt
-						url
-					}
-					... on PullRequest {
-						id
-						number
-						title
-						creator: author {
-							login
-						}
-						createdAt
-						url
-						}
-					}
-				}
-			}
 		}
 	}
 }
