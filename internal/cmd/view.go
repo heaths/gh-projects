@@ -66,10 +66,12 @@ func view(opts *viewOptions) (err error) {
 		return
 	}
 
-	project := data.Repository.ProjectNext
-	err = template.Project(os.Stdout, &project)
+	t, err := template.New(os.Stdout)
+	if err != nil {
+		return
+	}
 
-	return
+	return t.Project(data.Repository.ProjectNext)
 }
 
 const viewRepositoryProjectNextQuery = `

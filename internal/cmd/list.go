@@ -79,7 +79,12 @@ func list(opts *listOptions) (err error) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	defer w.Flush()
 
-	return template.Projects(w, projects)
+	t, err := template.New(w)
+	if err != nil {
+		return
+	}
+
+	return t.Projects(projects)
 }
 
 const listRepositoryProjectsNextQuery = `
