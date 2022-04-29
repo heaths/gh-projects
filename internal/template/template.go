@@ -28,22 +28,26 @@ func New(w io.Writer) (*Template, error) {
 }
 
 func (t *Template) Project(project models.Project) error {
-	t.t.New("project").Parse(heredoc.Doc(`
-	{{.Title}} #{{.Number}}
-	{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
-	{{if .Description}}
-	  {{.Description}}
-	{{end}}
-	View this project on GitHub: {{.URL}}
-	`))
+	if _, err := t.t.New("project").Parse(heredoc.Doc(`
+		{{.Title}} #{{.Number}}
+		{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
+		{{if .Description}}
+		{{.Description}}
+		{{end}}
+		View this project on GitHub: {{.URL}}
+	`)); err != nil {
+		return err
+	}
 
 	return t.t.ExecuteTemplate(t.w, "project", project)
 }
 
 func (t *Template) Projects(projects []models.Project) error {
-	t.t.New("projects").Parse(heredoc.Doc(`
-	{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{.ID}}{{end}}
-	`))
+	if _, err := t.t.New("projects").Parse(heredoc.Doc(`
+		{{range .}}#{{.Number}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{.ID}}{{end}}
+	`)); err != nil {
+		return err
+	}
 
 	return t.t.ExecuteTemplate(t.w, "projects", projects)
 }
