@@ -95,6 +95,7 @@ query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $aft
 				id
 				number
 				title
+				shortDescription
 				public
 				createdAt
 			}

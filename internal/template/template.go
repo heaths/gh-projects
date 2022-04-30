@@ -73,7 +73,7 @@ func (t *Template) Projects(projects []models.Project, totalCount int) error {
 		{{if isTTY}}
 		Showing {{len .Projects}} of {{pluralize .TotalCount "project"}}
 
-		{{end}}{{range .Projects}}{{template "id" .}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{dim .ID}}{{end}}
+		{{end}}{{range .Projects}}{{template "id" .}}{{"\t"}}{{bold .Title}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{.Description}}{{end}}
 	`)); err != nil {
 		return err
 	}
