@@ -25,6 +25,15 @@ gh extension upgrade --all
 
 ## Commands
 
+### edit
+
+Edit a project:
+
+```bash
+gh projects edit 1 -d "A short description" --public
+gh projects edit 1 --add-issue 4 --add-issue 8
+```
+
 ### list
 
 List projects:
@@ -34,7 +43,7 @@ gh projects list
 gh projects list --search "launch"
 ```
 
-### View
+### view
 
 View a project:
 
