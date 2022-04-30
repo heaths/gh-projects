@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
 	"github.com/heaths/gh-projects/internal/models"
@@ -22,16 +18,9 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 
 		The number argument can begin with a "#" symbol.
 		`),
-		Args: cobra.ExactArgs(1),
+		Args: projectNumber(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.GlobalOptions = *globalOpts
-
-			number := strings.TrimPrefix(args[0], "#")
-			if number, err := strconv.ParseUint(number, 10, 32); err != nil {
-				return fmt.Errorf("invalid project number")
-			} else {
-				opts.number = uint32(number)
-			}
 
 			return view(&opts)
 		},
@@ -74,12 +63,13 @@ func view(opts *viewOptions) (err error) {
 }
 
 const viewRepositoryProjectNextQuery = `
-query Project($owner: String!, $name: String!, $number: Int!) {
+query RepositoryProject($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
 			number
 			title
+			shortDescription
 			description
 			creator {
 				login

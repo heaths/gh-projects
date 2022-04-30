@@ -13,25 +13,25 @@ func ago(t time.Time) string {
 		return "just now"
 
 	case d < time.Hour:
-		approx = pluralize(int(d.Minutes()), "minute")
+		approx = Pluralize(int(d.Minutes()), "minute")
 
 	case d < 24*time.Hour:
-		approx = pluralize(int(d.Hours()), "hour")
+		approx = Pluralize(int(d.Hours()), "hour")
 
 	case d < 30*24*time.Hour:
-		approx = pluralize(int(d.Hours())/24, "day")
+		approx = Pluralize(int(d.Hours())/24, "day")
 
 	case d < 365*24*time.Hour:
-		approx = pluralize(int(d.Hours())/24/30, "month")
+		approx = Pluralize(int(d.Hours())/24/30, "month")
 
 	default:
-		approx = pluralize(int(d.Hours())/24/365, "year")
+		approx = Pluralize(int(d.Hours())/24/365, "year")
 	}
 
 	return fmt.Sprintf("about %s ago", approx)
 }
 
-func pluralize(num int, thing string) string {
+func Pluralize(num int, thing string) string {
 	if num == 1 {
 		return fmt.Sprintf("%d %s", num, thing)
 	}

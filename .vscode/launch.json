@@ -8,7 +8,10 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "list"
+                "edit",
+                "1",
+                "--remove-issue",
+                "4"
             ]
         }
     ]

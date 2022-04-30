@@ -6,7 +6,8 @@ type Project struct {
 	ID          string
 	Number      int
 	Title       string
-	Description string
+	Description string `json:"shortDescription"`
+	Body        string `json:"description"`
 	Creator     *actor
 	CreatedAt   *time.Time
 	Public      bool
@@ -18,14 +19,14 @@ type RepositoryProjects struct {
 }
 
 type RepositoryProject struct {
-	Repository project
+	Repository ProjectNode
 }
 
 type projects struct {
 	ProjectsNext ProjectsNode
 }
 
-type project struct {
+type ProjectNode struct {
 	ProjectNext Project
 }
 
