@@ -12,6 +12,21 @@ type Project struct {
 	CreatedAt   *time.Time
 	Public      bool
 	URL         string
+	Items       projectItemNode
+}
+type projectItemNode struct {
+	TotalCount int
+	Nodes      []ProjectItem
+	PageInfo   pageInfo
+}
+type ProjectItem struct {
+	ID      string
+	Content projectItemContent
+}
+
+type projectItemContent struct {
+	ID     string
+	Number uint32
 }
 
 type RepositoryProjects struct {

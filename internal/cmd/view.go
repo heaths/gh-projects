@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
@@ -49,7 +50,7 @@ func view(opts *viewOptions) (err error) {
 	}
 
 	var data models.RepositoryProject
-	err = client.Do(viewRepositoryProjectNextQuery, vars, &data)
+	err = client.Do(queryRepositoryProjectNext, vars, &data)
 	if err != nil {
 		return
 	}
@@ -62,8 +63,49 @@ func view(opts *viewOptions) (err error) {
 	return t.Project(data.Repository.ProjectNext)
 }
 
-const viewRepositoryProjectNextQuery = `
-query RepositoryProject($owner: String!, $name: String!, $number: Int!) {
+func listItems(client api.GQLClient, number int, opts *GlobalOptions) ([]models.ProjectItem, error) {
+	vars := map[string]interface{}{
+		"owner":  opts.Repo.Owner(),
+		"name":   opts.Repo.Name(),
+		"number": number,
+		"first":  30,
+	}
+
+	var data models.RepositoryProject
+	var projectItems []models.ProjectItem
+	var i int
+	for {
+		err := client.Do(queryRepositoryProjectNextItems, vars, &data)
+		if err != nil {
+			return nil, err
+		}
+
+		projectItemsNode := data.Repository.ProjectNext.Items
+		if projectItems == nil {
+			totalCount := projectItemsNode.TotalCount
+			if totalCount == 0 {
+				break
+			}
+			projectItems = make([]models.ProjectItem, totalCount)
+		}
+
+		for _, projectItem := range projectItemsNode.Nodes {
+			projectItems[i] = projectItem
+			i++
+		}
+
+		if projectItemsNode.PageInfo.HasNextPage {
+			vars["after"] = projectItemsNode.PageInfo.EndCursor
+		} else {
+			break
+		}
+	}
+
+	return projectItems, nil
+}
+
+const queryRepositoryProjectNext = `
+query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
@@ -77,6 +119,35 @@ query RepositoryProject($owner: String!, $name: String!, $number: Int!) {
 			createdAt
 			public
 			url
+		}
+	}
+}
+`
+
+const queryRepositoryProjectNextItems = `
+query RepositoryProjectNextItems($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
+	repository(owner: $owner, name: $name) {
+		projectNext(number: $number) {
+			items(first: $first, after: $after) {
+				totalCount
+				nodes {
+					id
+					content {
+						... on Issue {
+							id
+							number
+						}
+						... on PullRequest {
+							id
+							number
+						}
+					}
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
+			}
 		}
 	}
 }

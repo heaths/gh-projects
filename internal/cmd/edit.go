@@ -7,7 +7,7 @@ import (
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
-	"github.com/heaths/gh-projects/internal/template"
+	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -85,7 +85,7 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 	cmd.Flags().BoolVar(&public, "public", false, "Set the visibility.")
 
 	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add.")
-	// cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove.")
+	cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove.")
 
 	return cmd
 }
@@ -116,7 +116,7 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	var projectData models.RepositoryProject
-	err = client.Do(editRepositoryProjectNextQuery, vars, &projectData)
+	err = client.Do(queryRepositoryProjectNextID, vars, &projectData)
 	if err != nil {
 		return
 	}
@@ -139,31 +139,30 @@ func edit(opts *editOptions) (err error) {
 	var updatedProjectData struct {
 		UpdateProjectNext models.ProjectNode
 	}
-	err = client.Do(editProjectNextMutation, vars, &updatedProjectData)
+	err = client.Do(mutationUpdateProjectNext, vars, &updatedProjectData)
 	if err != nil {
 		return
 	}
 
 	if len(opts.addIssues) > 0 {
-		err = processIssues(client, opts.addIssues, editAddProjectNextItemMutation, projectId, opts)
+		err = addIssues(client, projectId, opts)
 		if err != nil {
 			return
 		}
 		if opts.Verbose && opts.Console.IsStdoutTTY() {
-			fmt.Fprintf(opts.Console.Stdout(), "Added %s", template.Pluralize(len(opts.addIssues), "issue"))
+			fmt.Fprintf(opts.Console.Stdout(), "Added %s", utils.Pluralize(len(opts.addIssues), "issue"))
 		}
 	}
 
-	// BUGBUG: Need to get ProjectNextItem.id of item in project.
-	// if len(opts.removeIssues) > 0 {
-	// 	err = processIssues(client, opts.removeIssues, editDeleteProjectNextItemMutation, projectId, opts)
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// 	if opts.Verbose && opts.Console.IsStdoutTTY() {
-	// 		fmt.Fprintf(opts.Console.Stdout(), "Removed %s", template.Pluralize(len(opts.removeIssues), "issue"))
-	// 	}
-	// }
+	if len(opts.removeIssues) > 0 {
+		err = removeItems(client, projectId, opts)
+		if err != nil {
+			return
+		}
+		if opts.Verbose && opts.Console.IsStdoutTTY() {
+			fmt.Fprintf(opts.Console.Stdout(), "Removed %s", utils.Pluralize(len(opts.removeIssues), "issue"))
+		}
+	}
 
 	if opts.Console.IsStdoutTTY() {
 		fmt.Fprintf(opts.Console.Stdout(), "%s\n", updatedProjectData.UpdateProjectNext.ProjectNext.URL)
@@ -172,18 +171,18 @@ func edit(opts *editOptions) (err error) {
 	return
 }
 
-func processIssues(client api.GQLClient, issues []uint32, mutation string, projectId string, opts *editOptions) (err error) {
+func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err error) {
 	vars := map[string]interface{}{
 		"owner": opts.Repo.Owner(),
 		"name":  opts.Repo.Name(),
 		"id":    projectId,
 	}
 
-	for _, issue := range issues {
+	for _, issue := range opts.addIssues {
 		vars["number"] = issue
 
 		var data models.RepositoryIssueOrPullRequest
-		err = client.Do(editRepositoryIssueOrPullRequestQuery, vars, &data)
+		err = client.Do(queryRepositoryIssueOrPullRequestID, vars, &data)
 		if err != nil {
 			return
 		}
@@ -192,7 +191,7 @@ func processIssues(client api.GQLClient, issues []uint32, mutation string, proje
 		vars["contentId"] = contentId
 
 		var mutationData map[string]interface{}
-		err = client.Do(mutation, vars, &mutationData)
+		err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
 		if err != nil {
 			return
 		}
@@ -201,7 +200,44 @@ func processIssues(client api.GQLClient, issues []uint32, mutation string, proje
 	return
 }
 
-const editAddProjectNextItemMutation = `
+func removeItems(client api.GQLClient, projectId string, opts *editOptions) (err error) {
+	items, err := listItems(client, int(opts.number), &opts.GlobalOptions)
+	if err != nil {
+		return
+	}
+
+	itemIds := make(map[uint32]string, len(items))
+	for _, item := range items {
+		itemIds[item.Content.Number] = item.ID
+	}
+
+	projectItemIds := make([]string, len(opts.removeIssues))
+	for i, issue := range opts.removeIssues {
+		if projectItemId, ok := itemIds[issue]; !ok {
+			return fmt.Errorf("project does not reference #%d", issue)
+		} else {
+			projectItemIds[i] = projectItemId
+		}
+	}
+
+	vars := map[string]interface{}{
+		"id": projectId,
+	}
+
+	for _, itemId := range projectItemIds {
+		vars["itemId"] = itemId
+
+		var mutationData map[string]interface{}
+		err = client.Do(mutationDeleteProjectNextItem, vars, &mutationData)
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+const mutationAddProjectNextItem = `
 mutation AddProjectNextItem($id: ID!, $contentId: ID!) {
 	addProjectNextItem(input: {projectId: $id, contentId: $contentId}) {
 		projectNextItem {
@@ -211,16 +247,16 @@ mutation AddProjectNextItem($id: ID!, $contentId: ID!) {
 }
 `
 
-// const editDeleteProjectNextItemMutation = `
-// mutation AddProjectNextItem($id: ID!, $contentId: ID!) {
-// 	deleteProjectNextItem(input: {projectId: $id, itemId: $contentId}) {
-// 		deletedItemId
-// 	}
-// }
-// `
+const mutationDeleteProjectNextItem = `
+mutation DeleteProjectNextItem($id: ID!, $itemId: ID!) {
+	deleteProjectNextItem(input: {projectId: $id, itemId: $itemId}) {
+		deletedItemId
+	}
+}
+`
 
-const editRepositoryIssueOrPullRequestQuery = `
-query ($owner: String!, $name: String!, $number: Int!) {
+const queryRepositoryIssueOrPullRequestID = `
+query RepositoryIssueOrPullRequestID($owner: String!, $name: String!, $number: Int!) {
 	repository(owner: $owner, name: $name) {
 		issueOrPullRequest(number: $number) {
 			... on Issue {
@@ -234,8 +270,8 @@ query ($owner: String!, $name: String!, $number: Int!) {
 }
 `
 
-const editProjectNextMutation = `
-mutation UpdateRepositoryProject($id: ID!, $title: String, $description: String, $body: String, $public: Boolean) {
+const mutationUpdateProjectNext = `
+mutation UpdateProjectNext($id: ID!, $title: String, $description: String, $body: String, $public: Boolean) {
 	updateProjectNext(
 		input: {projectId: $id, title: $title, shortDescription: $description, description: $body, public: $public}
 	) {
@@ -246,8 +282,8 @@ mutation UpdateRepositoryProject($id: ID!, $title: String, $description: String,
 }
 `
 
-const editRepositoryProjectNextQuery = `
-query RepositoryProject($owner: String!, $name: String!, $number: Int!) {
+const queryRepositoryProjectNextID = `
+query RepositoryProjectNextID($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id

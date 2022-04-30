@@ -51,15 +51,19 @@ func list(opts *listOptions) (err error) {
 	var i, totalCount int
 
 	for {
-		err = client.Do(listRepositoryProjectsNextQuery, vars, &data)
+		err = client.Do(queryRepositoryProjectsNext, vars, &data)
 		if err != nil {
 			return
 		}
 
 		projectsNode := data.Repository.ProjectsNext
 		if projects == nil {
-			projects = make([]models.Project, projectsNode.TotalCount)
-			totalCount = data.Repository.ProjectsNext.TotalCount
+			totalCount = projectsNode.TotalCount
+			if totalCount == 0 {
+				break
+			}
+
+			projects = make([]models.Project, totalCount)
 		}
 
 		for _, project := range projectsNode.Nodes {
@@ -82,8 +86,8 @@ func list(opts *listOptions) (err error) {
 	return t.Projects(projects, totalCount)
 }
 
-const listRepositoryProjectsNextQuery = `
-query RepositoryProjects($owner: String!, $name: String!, $first: Int!, $after: String, $search: String) {
+const queryRepositoryProjectsNext = `
+query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $after: String, $search: String) {
 	repository(owner: $owner, name: $name) {
 		projectsNext(first: $first, after: $after, query: $search) {
 			totalCount

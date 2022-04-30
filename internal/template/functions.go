@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/heaths/gh-projects/internal/utils"
 )
 
 func ago(t time.Time) string {
@@ -15,19 +16,19 @@ func ago(t time.Time) string {
 		return "just now"
 
 	case d < time.Hour:
-		approx = Pluralize(int(d.Minutes()), "minute")
+		approx = utils.Pluralize(int(d.Minutes()), "minute")
 
 	case d < 24*time.Hour:
-		approx = Pluralize(int(d.Hours()), "hour")
+		approx = utils.Pluralize(int(d.Hours()), "hour")
 
 	case d < 30*24*time.Hour:
-		approx = Pluralize(int(d.Hours())/24, "day")
+		approx = utils.Pluralize(int(d.Hours())/24, "day")
 
 	case d < 365*24*time.Hour:
-		approx = Pluralize(int(d.Hours())/24/30, "month")
+		approx = utils.Pluralize(int(d.Hours())/24/30, "month")
 
 	default:
-		approx = Pluralize(int(d.Hours())/24/365, "year")
+		approx = utils.Pluralize(int(d.Hours())/24/365, "year")
 	}
 
 	return fmt.Sprintf("about %s ago", approx)
@@ -53,12 +54,4 @@ func markdown(isTTY func() bool) func(string) (string, error) {
 
 		return text, nil
 	}
-}
-
-func Pluralize(num int, thing string) string {
-	if num == 1 {
-		return fmt.Sprintf("%d %s", num, thing)
-	}
-
-	return fmt.Sprintf("%d %ss", num, thing)
 }

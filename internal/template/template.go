@@ -8,6 +8,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/heaths/gh-projects/internal/models"
+	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/heaths/go-console"
 	"github.com/heaths/go-console/pkg/colorscheme"
 )
@@ -33,7 +34,7 @@ func New(c *console.Console) (*Template, error) {
 		},
 		"isTTY":     c.IsStdoutTTY,
 		"markdown":  markdown(c.IsStdoutTTY),
-		"pluralize": Pluralize,
+		"pluralize": utils.Pluralize,
 	})
 
 	if _, err := templ.New("id").Parse(heredoc.Doc(`
