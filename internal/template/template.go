@@ -32,6 +32,7 @@ func New(c *console.Console) (*Template, error) {
 			return cs.ColorFunc(style)(text)
 		},
 		"isTTY":     c.IsStdoutTTY,
+		"markdown":  markdown(c.IsStdoutTTY),
 		"pluralize": Pluralize,
 	})
 
@@ -41,7 +42,7 @@ func New(c *console.Console) (*Template, error) {
 	}
 
 	if _, err := templ.New("visibility").Parse(heredoc.Doc(`
-		{{if .Public}}{{color "magenta" "PUBLIC"}}{{else}}{{color "magenta" "PRIVATE"}}{{end}}`)); err != nil {
+		{{if .Public}}{{color "magenta" "Public"}}{{else}}{{color "magenta" "Private"}}{{end}}`)); err != nil {
 		return nil, err
 	}
 
@@ -57,8 +58,7 @@ func (t *Template) Project(project models.Project) error {
 		{{.Description}}{{end}}
 		{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
 		{{if .Body}}
-		  {{.Body}}
-		{{end}}{{if isTTY}}
+		{{if isTTY}}  {{end}}{{markdown .Body}}{{end}}{{if isTTY}}
 		{{printf "View this project on GitHub: %s" .URL | dim}}{{end}}
 	`)); err != nil {
 		return err

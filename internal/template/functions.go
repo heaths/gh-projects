@@ -3,6 +3,8 @@ package template
 import (
 	"fmt"
 	"time"
+
+	"github.com/charmbracelet/glamour"
 )
 
 func ago(t time.Time) string {
@@ -29,6 +31,28 @@ func ago(t time.Time) string {
 	}
 
 	return fmt.Sprintf("about %s ago", approx)
+}
+
+var renderer *glamour.TermRenderer
+
+func markdown(isTTY func() bool) func(string) (string, error) {
+	return func(text string) (string, error) {
+		if isTTY() {
+			if renderer == nil {
+				var err error
+				renderer, err = glamour.NewTermRenderer(
+					glamour.WithAutoStyle(),
+				)
+				if err != nil {
+					return "", nil
+				}
+			}
+
+			return renderer.Render(text)
+		}
+
+		return text, nil
+	}
 }
 
 func Pluralize(num int, thing string) string {
