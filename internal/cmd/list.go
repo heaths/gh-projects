@@ -48,7 +48,7 @@ func list(opts *listOptions) (err error) {
 
 	var data models.RepositoryProjects
 	var projects []models.Project
-	i := 0
+	var i, totalCount int
 
 	for {
 		err = client.Do(listRepositoryProjectsNextQuery, vars, &data)
@@ -59,6 +59,7 @@ func list(opts *listOptions) (err error) {
 		projectsNode := data.Repository.ProjectsNext
 		if projects == nil {
 			projects = make([]models.Project, projectsNode.TotalCount)
+			totalCount = data.Repository.ProjectsNext.TotalCount
 		}
 
 		for _, project := range projectsNode.Nodes {
@@ -78,7 +79,7 @@ func list(opts *listOptions) (err error) {
 		return
 	}
 
-	return t.Projects(projects)
+	return t.Projects(projects, totalCount)
 }
 
 const listRepositoryProjectsNextQuery = `

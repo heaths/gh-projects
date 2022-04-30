@@ -27,11 +27,18 @@ func New(c *console.Console) (*Template, error) {
 	templ.Funcs(map[string]interface{}{
 		"ago":  ago,
 		"bold": cs.ColorFunc("white+b"),
-		"color": func(color, text string) string {
-			return cs.ColorFunc(color)(text)
+		"dim":  cs.ColorFunc("white+d"),
+		"color": func(style, text string) string {
+			return cs.ColorFunc(style)(text)
 		},
-		"dim": cs.ColorFunc("white+d"),
+		"isTTY":     c.IsStdoutTTY,
+		"pluralize": Pluralize,
 	})
+
+	if _, err := templ.New("id").Parse(heredoc.Doc(`
+		{{printf "#%d" .Number | color "green"}}`)); err != nil {
+		return nil, err
+	}
 
 	if _, err := templ.New("visibility").Parse(heredoc.Doc(`
 		{{if .Public}}{{color "magenta" "PUBLIC"}}{{else}}{{color "magenta" "PRIVATE"}}{{end}}`)); err != nil {
@@ -46,12 +53,13 @@ func New(c *console.Console) (*Template, error) {
 
 func (t *Template) Project(project models.Project) error {
 	if _, err := t.t.New("project").Parse(heredoc.Doc(`
-		{{bold .Title}} #{{.Number}}
+		{{bold .Title}} {{template "id" .}}{{if .Description}}
+		{{.Description}}{{end}}
 		{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
-		{{if .Description}}
-		  {{.Description}}
-		{{end}}
-		{{printf "View this project on GitHub: %s" .URL | dim}}
+		{{if .Body}}
+		  {{.Body}}
+		{{end}}{{if isTTY}}
+		{{printf "View this project on GitHub: %s" .URL | dim}}{{end}}
 	`)); err != nil {
 		return err
 	}
@@ -59,9 +67,12 @@ func (t *Template) Project(project models.Project) error {
 	return t.t.ExecuteTemplate(t.w, "project", project)
 }
 
-func (t *Template) Projects(projects []models.Project) error {
+func (t *Template) Projects(projects []models.Project, totalCount int) error {
 	if _, err := t.t.New("projects").Parse(heredoc.Doc(`
-		{{range .}}{{printf "#%d" .Number | color "green"}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{dim .ID}}{{end}}
+		{{if isTTY}}
+		Showing {{len .Projects}} of {{pluralize .TotalCount "project"}}
+
+		{{end}}{{range .Projects}}{{template "id" .}}{{"\t"}}{{.Title}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{dim .ID}}{{end}}
 	`)); err != nil {
 		return err
 	}
@@ -69,5 +80,13 @@ func (t *Template) Projects(projects []models.Project) error {
 	w := tabwriter.NewWriter(t.w, 0, 0, 2, ' ', 0)
 	defer w.Flush()
 
-	return t.t.ExecuteTemplate(w, "projects", projects)
+	data := struct {
+		Projects   []models.Project
+		TotalCount int
+	}{
+		Projects:   projects,
+		TotalCount: totalCount,
+	}
+
+	return t.t.ExecuteTemplate(w, "projects", data)
 }
