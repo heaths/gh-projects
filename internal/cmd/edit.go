@@ -25,6 +25,8 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 
 			The number argument can begin with a "#" symbol.
 
+			Pass "-" to --body to read from standard input.
+
 			Issues and pull requests to add or remove from a project are referenced
 			by their issue or pull request number for the specified repository. If a
 			repository is not specified, the current repository is used.
@@ -34,6 +36,11 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 		Example: heredoc.Doc(`
 			# make the project private
 			$ gh projects edit 1 --public=false
+
+			# set the description and read the body from stdin
+			$ gh projects edit 1 --description 'Initial Release' --body - < "EOF"
+			  Ship our _initial release_!
+			  EOF
 
 			# add issues to a project referenced by the current repository
 			$ gh projects edit 1 --add-issue 1 --add-issue 2
@@ -81,7 +88,9 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 	// title is required so we don't need a separate variable.
 	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Set the new title.")
 	cmd.Flags().StringVarP(&description, "description", "d", "", "Sets the new short description.")
-	cmd.Flags().StringVarP(&body, "body", "b", "", "Set the new body.")
+
+	// Need to pass globalOpts.Console since opts.GlobalOptions has not yet been set.
+	StdinStringVarP(cmd.Flags(), globalOpts.Console.Stdin(), &body, "body", "b", "", "Set the new body.")
 	cmd.Flags().BoolVar(&public, "public", false, "Set the visibility.")
 
 	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add.")
