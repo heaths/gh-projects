@@ -41,7 +41,6 @@ jobs:
       if: ${{ !cancelled() && matrix.lint }}
       uses: golangci/golangci-lint-action@v3
       with:
-        only-new-issues: true
         skip-cache: true
 
   check:

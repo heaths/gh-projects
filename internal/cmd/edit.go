@@ -130,8 +130,8 @@ func edit(opts *editOptions) (err error) {
 		return
 	}
 
-	projectId := projectData.Repository.ProjectNext.ID
-	vars["id"] = projectId
+	projectID := projectData.Repository.ProjectNext.ID
+	vars["id"] = projectID
 	if opts.title != "" {
 		vars["title"] = opts.title
 	}
@@ -159,7 +159,7 @@ func edit(opts *editOptions) (err error) {
 		count := utils.Pluralize(len(opts.addIssues), "issue")
 
 		opts.Console.StartProgress(fmt.Sprintf("Adding %s to %s", count, projectURL))
-		err = addIssues(client, projectId, opts)
+		err = addIssues(client, projectID, opts)
 		opts.Console.StopProgress()
 
 		if err != nil {
@@ -175,7 +175,7 @@ func edit(opts *editOptions) (err error) {
 		count := utils.Pluralize(len(opts.removeIssues), "issue")
 
 		opts.Console.StartProgress(fmt.Sprintf("Removing %s %s", count, projectURL))
-		err = removeItems(client, projectId, opts)
+		err = removeItems(client, projectID, opts)
 		opts.Console.StopProgress()
 
 		if err != nil {
@@ -194,11 +194,11 @@ func edit(opts *editOptions) (err error) {
 	return
 }
 
-func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err error) {
+func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err error) {
 	vars := map[string]interface{}{
 		"owner": opts.Repo.Owner(),
 		"name":  opts.Repo.Name(),
-		"id":    projectId,
+		"id":    projectID,
 	}
 
 	for _, issue := range opts.addIssues {
@@ -210,8 +210,8 @@ func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err e
 			return
 		}
 
-		contentId := data.Repository.IssueOrPullRequest.ID
-		vars["contentId"] = contentId
+		contentID := data.Repository.IssueOrPullRequest.ID
+		vars["contentId"] = contentID
 
 		var mutationData map[string]interface{}
 		err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
@@ -223,7 +223,7 @@ func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err e
 	return
 }
 
-func removeItems(client api.GQLClient, projectId string, opts *editOptions) (err error) {
+func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err error) {
 	items, err := listItems(client, int(opts.number), &opts.GlobalOptions)
 	if err != nil {
 		return
@@ -234,21 +234,21 @@ func removeItems(client api.GQLClient, projectId string, opts *editOptions) (err
 		itemIds[item.Content.Number] = item.ID
 	}
 
-	projectItemIds := make([]string, len(opts.removeIssues))
+	projectItemIDs := make([]string, len(opts.removeIssues))
 	for i, issue := range opts.removeIssues {
-		if projectItemId, ok := itemIds[issue]; !ok {
+		if projectItemID, ok := itemIds[issue]; !ok {
 			return fmt.Errorf("project does not reference #%d", issue)
 		} else {
-			projectItemIds[i] = projectItemId
+			projectItemIDs[i] = projectItemID
 		}
 	}
 
 	vars := map[string]interface{}{
-		"id": projectId,
+		"id": projectID,
 	}
 
-	for _, itemId := range projectItemIds {
-		vars["itemId"] = itemId
+	for _, itemID := range projectItemIDs {
+		vars["itemId"] = itemID
 
 		var mutationData map[string]interface{}
 		err = client.Do(mutationDeleteProjectNextItem, vars, &mutationData)
