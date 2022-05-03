@@ -20,23 +20,23 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 		Use:   "edit <number>",
 		Short: "Edit a project",
 		Long: heredoc.Doc(`
-		Updates project settings, and adds or removes draft issues, issues,
-		and pull requests.
+			Updates project settings, and adds or removes draft issues, issues,
+			and pull requests.
 
-		The number argument can begin with a "#" symbol.
+			The number argument can begin with a "#" symbol.
 
-		Issues and pull requests to add or remove from a project are referenced
-		by their issue or pull request number for the specified repository. If a
-		repository is not specified, the current repository is used.
+			Issues and pull requests to add or remove from a project are referenced
+			by their issue or pull request number for the specified repository. If a
+			repository is not specified, the current repository is used.
 
-		Issue and pull request number arguments can also begin with a "#" symbol.
+			Issue and pull request number arguments can also begin with a "#" symbol.
 		`),
 		Example: heredoc.Doc(`
-		# make the project private
-		$ gh projects edit 1 --public=false
+			# make the project private
+			$ gh projects edit 1 --public=false
 
-		# add issues to a project referenced by the current repository
-		$ gh projects edit 1 --add-issue 1 --add-issue 2
+			# add issues to a project referenced by the current repository
+			$ gh projects edit 1 --add-issue 1 --add-issue 2
 		`),
 		Args: projectNumber(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -144,28 +144,42 @@ func edit(opts *editOptions) (err error) {
 		return
 	}
 
+	projectUrl := updatedProjectData.UpdateProjectNext.ProjectNext.URL
+
 	if len(opts.addIssues) > 0 {
+		count := utils.Pluralize(len(opts.addIssues), "issue")
+
+		opts.Console.StartProgress(fmt.Sprintf("Adding %s to %s", count, projectUrl))
 		err = addIssues(client, projectId, opts)
+		opts.Console.StopProgress()
+
 		if err != nil {
 			return
 		}
+
 		if opts.Verbose && opts.Console.IsStdoutTTY() {
-			fmt.Fprintf(opts.Console.Stdout(), "Added %s", utils.Pluralize(len(opts.addIssues), "issue"))
+			fmt.Fprintf(opts.Console.Stdout(), "Added %s", count)
 		}
 	}
 
 	if len(opts.removeIssues) > 0 {
+		count := utils.Pluralize(len(opts.removeIssues), "issue")
+
+		opts.Console.StartProgress(fmt.Sprintf("Removing %s %s", count, projectUrl))
 		err = removeItems(client, projectId, opts)
+		opts.Console.StopProgress()
+
 		if err != nil {
 			return
 		}
+
 		if opts.Verbose && opts.Console.IsStdoutTTY() {
-			fmt.Fprintf(opts.Console.Stdout(), "Removed %s", utils.Pluralize(len(opts.removeIssues), "issue"))
+			fmt.Fprintf(opts.Console.Stdout(), "Removed %s", count)
 		}
 	}
 
 	if opts.Console.IsStdoutTTY() {
-		fmt.Fprintf(opts.Console.Stdout(), "%s\n", updatedProjectData.UpdateProjectNext.ProjectNext.URL)
+		fmt.Fprintf(opts.Console.Stdout(), "%s\n", projectUrl)
 	}
 
 	return
