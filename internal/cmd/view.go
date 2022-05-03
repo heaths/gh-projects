@@ -15,9 +15,9 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 		Use:   "view <number>",
 		Short: "View a project",
 		Long: heredoc.Doc(`
-		View information about a project and its fields.
+			View information about a project and its fields.
 
-		The number argument can begin with a "#" symbol.
+			The number argument can begin with a "#" symbol.
 		`),
 		Args: projectNumber(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {

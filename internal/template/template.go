@@ -10,7 +10,6 @@ import (
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/heaths/go-console"
-	"github.com/heaths/go-console/pkg/colorscheme"
 )
 
 type Template struct {
@@ -21,10 +20,7 @@ type Template struct {
 func New(c *console.Console) (*Template, error) {
 	templ := tt.New("")
 
-	cs := colorscheme.New(
-		colorscheme.WithTTY(c.IsStdoutTTY),
-	)
-
+	cs := c.ColorScheme()
 	templ.Funcs(map[string]interface{}{
 		"ago":  ago,
 		"bold": cs.ColorFunc("white+b"),
