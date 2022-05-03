@@ -10,8 +10,8 @@
             "args": [
                 "edit",
                 "1",
-                "--remove-issue",
-                "4"
+                "--body",
+                "-"
             ]
         }
     ]
