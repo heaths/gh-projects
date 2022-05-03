@@ -194,11 +194,11 @@ func edit(opts *editOptions) (err error) {
 	return
 }
 
-func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err error) {
+func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err error) {
 	vars := map[string]interface{}{
 		"owner": opts.Repo.Owner(),
 		"name":  opts.Repo.Name(),
-		"id":    projectId,
+		"id":    projectID,
 	}
 
 	for _, issue := range opts.addIssues {
@@ -223,7 +223,7 @@ func addIssues(client api.GQLClient, projectId string, opts *editOptions) (err e
 	return
 }
 
-func removeItems(client api.GQLClient, projectId string, opts *editOptions) (err error) {
+func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err error) {
 	items, err := listItems(client, int(opts.number), &opts.GlobalOptions)
 	if err != nil {
 		return
@@ -244,7 +244,7 @@ func removeItems(client api.GQLClient, projectId string, opts *editOptions) (err
 	}
 
 	vars := map[string]interface{}{
-		"id": projectId,
+		"id": projectID,
 	}
 
 	for _, itemID := range projectItemIDs {
