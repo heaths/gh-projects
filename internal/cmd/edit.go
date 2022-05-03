@@ -144,12 +144,12 @@ func edit(opts *editOptions) (err error) {
 		return
 	}
 
-	projectUrl := updatedProjectData.UpdateProjectNext.ProjectNext.URL
+	projectURL := updatedProjectData.UpdateProjectNext.ProjectNext.URL
 
 	if len(opts.addIssues) > 0 {
 		count := utils.Pluralize(len(opts.addIssues), "issue")
 
-		opts.Console.StartProgress(fmt.Sprintf("Adding %s to %s", count, projectUrl))
+		opts.Console.StartProgress(fmt.Sprintf("Adding %s to %s", count, projectURL))
 		err = addIssues(client, projectId, opts)
 		opts.Console.StopProgress()
 
@@ -165,7 +165,7 @@ func edit(opts *editOptions) (err error) {
 	if len(opts.removeIssues) > 0 {
 		count := utils.Pluralize(len(opts.removeIssues), "issue")
 
-		opts.Console.StartProgress(fmt.Sprintf("Removing %s %s", count, projectUrl))
+		opts.Console.StartProgress(fmt.Sprintf("Removing %s %s", count, projectURL))
 		err = removeItems(client, projectId, opts)
 		opts.Console.StopProgress()
 
@@ -179,7 +179,7 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	if opts.Console.IsStdoutTTY() {
-		fmt.Fprintf(opts.Console.Stdout(), "%s\n", projectUrl)
+		fmt.Fprintf(opts.Console.Stdout(), "%s\n", projectURL)
 	}
 
 	return
