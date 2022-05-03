@@ -45,7 +45,7 @@ func markdown(isTTY func() bool) func(string) (string, error) {
 					glamour.WithAutoStyle(),
 				)
 				if err != nil {
-					return "", nil
+					return "", err
 				}
 			}
 
