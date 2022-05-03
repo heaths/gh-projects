@@ -1,6 +1,6 @@
 module github.com/heaths/gh-projects
 
-go 1.18
+go 1.17
 
 require (
 	github.com/MakeNowJust/heredoc v1.0.0

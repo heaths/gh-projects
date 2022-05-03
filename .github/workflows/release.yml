@@ -13,7 +13,7 @@ defaults:
     shell: bash
 
 env:
-  GOVERSION: '1.18'
+  GOVERSION: '1.17'
 
 jobs:
   release:
@@ -22,7 +22,7 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     - name: install go ${{ env.GOVERSION }}
-      uses: actions/setup-go@v2.1.4
+      uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVERSION }}
     - name: test

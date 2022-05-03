@@ -11,7 +11,7 @@ defaults:
     shell: bash
 
 env:
-  GOVERSION: '1.18'
+  GOVERSION: '1.17'
 
 jobs:
   test:
@@ -32,17 +32,17 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
     - name: install go ${{ env.GOVERSION }}
-      uses: actions/setup-go@v2.1.4
+      uses: actions/setup-go@v2
       with:
         go-version: ${{ env.GOVERSION }}
     - name: test
       run: GOOS=${{ matrix.goos }} go test ./... -cover -v
     - name: lint
       if: ${{ !cancelled() && matrix.lint }}
-      uses: golangci/golangci-lint-action@v2.5.2
+      uses: golangci/golangci-lint-action@v3
       with:
         only-new-issues: true
-        skip-go-installation: true
+        skip-cache: true
 
   check:
     runs-on: ubuntu-latest
