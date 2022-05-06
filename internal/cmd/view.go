@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
-	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
@@ -19,13 +20,23 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 
 			The number argument can begin with a "#" symbol.
 		`),
-		Args: projectNumber(&opts.number),
+		Args: ProjectNumberArg(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.GlobalOptions = *globalOpts
+
+			switch {
+			case opts.limit == 0:
+				return fmt.Errorf("limit must be greater than 1")
+			case opts.limit > 100:
+				return fmt.Errorf("limit must be less than or equal to 100")
+			}
 
 			return view(&opts)
 		},
 	}
+
+	cmd.Flags().BoolVar(&opts.items, "items", false, "Include drafts, issues, and pull requests.")
+	cmd.Flags().Uint32VarP(&opts.limit, "limit", "L", 20, "Number of items to include.")
 
 	return cmd
 }
@@ -33,7 +44,9 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 type viewOptions struct {
 	GlobalOptions
 
-	number uint32
+	number int
+	items  bool
+	limit  uint32
 }
 
 func view(opts *viewOptions) (err error) {
@@ -43,10 +56,11 @@ func view(opts *viewOptions) (err error) {
 	}
 
 	vars := map[string]interface{}{
-		"owner":  opts.Repo.Owner(),
-		"name":   opts.Repo.Name(),
-		"number": opts.number,
-		"first":  30,
+		"owner":        opts.Repo.Owner(),
+		"name":         opts.Repo.Name(),
+		"number":       opts.number,
+		"limit":        opts.limit,
+		"includeItems": opts.items,
 	}
 
 	var data models.RepositoryProject
@@ -63,89 +77,46 @@ func view(opts *viewOptions) (err error) {
 	return t.Project(data.Repository.ProjectNext)
 }
 
-func listItems(client api.GQLClient, number int, opts *GlobalOptions) ([]models.ProjectItem, error) {
-	vars := map[string]interface{}{
-		"owner":  opts.Repo.Owner(),
-		"name":   opts.Repo.Name(),
-		"number": number,
-		"first":  30,
-	}
-
-	var data models.RepositoryProject
-	var projectItems []models.ProjectItem
-	var i int
-	for {
-		err := client.Do(queryRepositoryProjectNextItems, vars, &data)
-		if err != nil {
-			return nil, err
-		}
-
-		projectItemsNode := data.Repository.ProjectNext.Items
-		if projectItems == nil {
-			totalCount := projectItemsNode.TotalCount
-			if totalCount == 0 {
-				break
-			}
-			projectItems = make([]models.ProjectItem, totalCount)
-		}
-
-		for _, projectItem := range projectItemsNode.Nodes {
-			projectItems[i] = projectItem
-			i++
-		}
-
-		if projectItemsNode.PageInfo.HasNextPage {
-			vars["after"] = projectItemsNode.PageInfo.EndCursor
-		} else {
-			break
-		}
-	}
-
-	return projectItems, nil
-}
-
 const queryRepositoryProjectNext = `
-query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!) {
+query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $includeItems: Boolean = false) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
 			number
 			title
-			shortDescription
-			description
+			description: shortDescription
+			body: description
 			creator {
 				login
 			}
 			createdAt
 			public
 			url
+			...items @include(if: $includeItems)
 		}
 	}
 }
-`
 
-const queryRepositoryProjectNextItems = `
-query RepositoryProjectNextItems($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
-	repository(owner: $owner, name: $name) {
-		projectNext(number: $number) {
-			items(first: $first, after: $after) {
-				totalCount
-				nodes {
-					id
-					content {
-						... on Issue {
-							id
-							number
-						}
-						... on PullRequest {
-							id
-							number
-						}
-					}
+fragment items on ProjectNext {
+	items(first: $limit) {
+		totalCount
+		nodes {
+			id
+			title
+			type
+			content {
+				... on DraftIssue {
+					createdAt
 				}
-				pageInfo {
-					hasNextPage
-					endCursor
+				... on Issue {
+					number
+					createdAt
+					state
+				}
+				... on PullRequest {
+					number
+					createdAt
+					state
 				}
 			}
 		}

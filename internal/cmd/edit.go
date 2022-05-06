@@ -45,7 +45,7 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 			# add issues to a project referenced by the current repository
 			$ gh projects edit 1 --add-issue 1 --add-issue 2
 		`),
-		Args: projectNumber(&opts.number),
+		Args: ProjectNumberArg(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.GlobalOptions = *globalOpts
 
@@ -61,9 +61,9 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 				opts.public = &public
 			}
 
-			opts.addIssues = make([]uint32, len(addIssues))
+			opts.addIssues = make([]int, len(addIssues))
 			for i, issue := range addIssues {
-				issue, err := parseRef(issue, "invalid issue number")
+				issue, err := parseNumber(issue, "invalid issue number")
 				if err != nil {
 					return err
 				}
@@ -71,9 +71,9 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 				opts.addIssues[i] = issue
 			}
 
-			opts.removeIssues = make([]uint32, len(removeIssues))
+			opts.removeIssues = make([]int, len(removeIssues))
 			for i, issue := range removeIssues {
-				issue, err := parseRef(issue, "invalid issue number")
+				issue, err := parseNumber(issue, "invalid issue number")
 				if err != nil {
 					return err
 				}
@@ -102,14 +102,14 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 type editOptions struct {
 	GlobalOptions
 
-	number      uint32
+	number      int
 	title       string
 	description *string
 	body        *string
 	public      *bool
 
-	addIssues    []uint32
-	removeIssues []uint32
+	addIssues    []int
+	removeIssues []int
 }
 
 func edit(opts *editOptions) (err error) {
@@ -229,7 +229,7 @@ func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err
 		return
 	}
 
-	itemIds := make(map[uint32]string, len(items))
+	itemIds := make(map[int]string, len(items))
 	for _, item := range items {
 		itemIds[item.Content.Number] = item.ID
 	}
@@ -260,6 +260,47 @@ func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err
 	return
 }
 
+func listItems(client api.GQLClient, number int, opts *GlobalOptions) ([]models.ProjectItem, error) {
+	vars := map[string]interface{}{
+		"owner":  opts.Repo.Owner(),
+		"name":   opts.Repo.Name(),
+		"number": number,
+		"first":  30,
+	}
+
+	var data models.RepositoryProject
+	var projectItems []models.ProjectItem
+	var i int
+	for {
+		err := client.Do(queryRepositoryProjectNextItems, vars, &data)
+		if err != nil {
+			return nil, err
+		}
+
+		projectItemsNode := data.Repository.ProjectNext.Items
+		if projectItems == nil {
+			totalCount := projectItemsNode.TotalCount
+			if totalCount == 0 {
+				break
+			}
+			projectItems = make([]models.ProjectItem, totalCount)
+		}
+
+		for _, projectItem := range projectItemsNode.Nodes {
+			projectItems[i] = projectItem
+			i++
+		}
+
+		if projectItemsNode.PageInfo.HasNextPage {
+			vars["after"] = projectItemsNode.PageInfo.EndCursor
+		} else {
+			break
+		}
+	}
+
+	return projectItems, nil
+}
+
 const mutationAddProjectNextItem = `
 mutation AddProjectNextItem($id: ID!, $contentId: ID!) {
 	addProjectNextItem(input: {projectId: $id, contentId: $contentId}) {
@@ -287,6 +328,35 @@ query RepositoryIssueOrPullRequestID($owner: String!, $name: String!, $number: I
 			}
 			... on PullRequest {
 				id
+			}
+		}
+	}
+}
+`
+
+const queryRepositoryProjectNextItems = `
+query RepositoryProjectNextItems($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
+	repository(owner: $owner, name: $name) {
+		projectNext(number: $number) {
+			items(first: $first, after: $after) {
+				totalCount
+				nodes {
+					id
+					content {
+						... on Issue {
+							id
+							number
+						}
+						... on PullRequest {
+							id
+							number
+						}
+					}
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
 			}
 		}
 	}

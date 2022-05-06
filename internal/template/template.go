@@ -2,6 +2,7 @@ package template
 
 // cSpell:ignore templ
 import (
+	"fmt"
 	"io"
 	"text/tabwriter"
 	tt "text/template"
@@ -13,13 +14,17 @@ import (
 )
 
 type Template struct {
-	t *tt.Template
-	w io.Writer
+	t  *tt.Template
+	w  io.Writer
+	ts tableState
 }
 
 func New(c *console.Console) (*Template, error) {
 	templ := tt.New("")
-
+	t := &Template{
+		t: templ,
+		w: c.Stdout(),
+	}
 	cs := c.ColorScheme()
 	templ.Funcs(map[string]interface{}{
 		"ago":  ago,
@@ -28,38 +33,72 @@ func New(c *console.Console) (*Template, error) {
 		"color": func(style, text string) string {
 			return cs.ColorFunc(style)(text)
 		},
-		"isTTY":     c.IsStdoutTTY,
-		"markdown":  markdown(c.IsStdoutTTY),
+		"isTTY":    c.IsStdoutTTY,
+		"markdown": markdown(c.IsStdoutTTY),
+		"number": func(number int) string {
+			if number != 0 {
+				return cs.Green(fmt.Sprintf("#%d", number))
+			}
+			// Return colored empty string to use consistent column width.
+			return cs.Black("")
+		},
 		"pluralize": utils.Pluralize,
+		"state": func(s string) string {
+			switch s {
+			case "CLOSED":
+				return cs.LightBlack("closed")
+			case "OPEN":
+				return cs.Green("open")
+			case "MERGED":
+				return cs.Magenta("merged")
+			default:
+				// Return colored empty string to use consistent column width.
+				return cs.Black("")
+			}
+		},
+		"tablerow":    tablerowFunc(&t.ts),
+		"tablerender": tablerenderFunc(&t.ts),
+		"type": func(it string) string {
+			switch it {
+			case "DRAFT_ISSUE":
+				return "Draft"
+			case "ISSUE":
+				return "Issue"
+			case "PULL_REQUEST":
+				return "PullRequest"
+			default:
+				return it
+			}
+		},
+		"visibility": func(public bool) string {
+			if public {
+				return cs.LightBlack("public")
+			}
+
+			return cs.Yellow("private")
+		},
 	})
 
-	if _, err := templ.New("id").Parse(heredoc.Doc(`
-		{{printf "#%d" .Number | color "green"}}`)); err != nil {
-		return nil, err
-	}
-
-	if _, err := templ.New("visibility").Parse(heredoc.Doc(`
-		{{if .Public}}{{color "magenta" "Public"}}{{else}}{{color "magenta" "Private"}}{{end}}`)); err != nil {
-		return nil, err
-	}
-
-	return &Template{
-		t: templ,
-		w: c.Stdout(),
-	}, nil
+	return t, nil
 }
 
 func (t *Template) Project(project models.Project) error {
 	if _, err := t.t.New("project").Parse(heredoc.Doc(`
-		{{bold .Title}} {{template "id" .}}{{if .Description}}
+		{{bold .Title}} {{number .Number}}{{if .Description}}
 		{{.Description}}{{end}}
-		{{template "visibility" .}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
+		{{visibility .Public}} • {{.Creator.Login}} opened {{ago .CreatedAt}}
 		{{if .Body}}
-		{{if isTTY}}  {{end}}{{markdown .Body}}{{end}}{{if isTTY}}
+		{{if isTTY}}  {{end}}{{markdown .Body}}{{end}}{{with .Items}}
+		Showing {{len .Nodes}} of {{pluralize .TotalCount "item"}}
+
+		{{range .Nodes}}{{tablerow (type .Type) (number .Content.Number) .Title (state .Content.State) (ago .Content.CreatedAt | dim)}}{{end}}{{tablerender}}{{end}}{{if isTTY}}
 		{{printf "View this project on GitHub: %s" .URL | dim}}{{end}}
 	`)); err != nil {
 		return err
 	}
+
+	w := tabwriter.NewWriter(t.w, 0, 0, 2, ' ', 0)
+	defer w.Flush()
 
 	return t.t.ExecuteTemplate(t.w, "project", project)
 }
@@ -69,13 +108,10 @@ func (t *Template) Projects(projects []models.Project, totalCount int) error {
 		{{if isTTY}}
 		Showing {{len .Projects}} of {{pluralize .TotalCount "project"}}
 
-		{{end}}{{range .Projects}}{{template "id" .}}{{"\t"}}{{bold .Title}}{{"\t"}}{{template "visibility" .}}{{"\t"}}{{ago .CreatedAt | dim}}{{"\t"}}{{.Description}}{{end}}
+		{{end}}{{range .Projects}}{{tablerow (number .Number) (bold .Title) (visibility .Public) (ago .CreatedAt | dim) .Description}}{{end}}{{tablerender}}
 	`)); err != nil {
 		return err
 	}
-
-	w := tabwriter.NewWriter(t.w, 0, 0, 2, ' ', 0)
-	defer w.Flush()
 
 	data := struct {
 		Projects   []models.Project
@@ -85,5 +121,5 @@ func (t *Template) Projects(projects []models.Project, totalCount int) error {
 		TotalCount: totalCount,
 	}
 
-	return t.t.ExecuteTemplate(w, "projects", data)
+	return t.t.ExecuteTemplate(t.w, "projects", data)
 }

@@ -61,22 +61,22 @@ func (v *stdinValue) Type() string {
 	return "string"
 }
 
-func projectNumber(number *uint32) cobra.PositionalArgs {
+func ProjectNumberArg(number *int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) (err error) {
 		if len(args) == 0 {
 			return fmt.Errorf("missing required project number")
 		}
 
-		*number, err = parseRef(args[0], "invalid project number")
+		*number, err = parseNumber(args[0], "invalid project number")
 		return
 	}
 }
 
-func parseRef(ref, errMsg string) (uint32, error) {
-	num := strings.TrimPrefix(ref, "#")
+func parseNumber(number, message string) (int, error) {
+	num := strings.TrimPrefix(number, "#")
 	if num, err := strconv.ParseUint(num, 10, 32); err != nil {
-		return 0, fmt.Errorf("%s: %s", errMsg, ref)
+		return 0, fmt.Errorf("%s: %s", message, number)
 	} else {
-		return uint32(num), nil
+		return int(num), nil
 	}
 }
