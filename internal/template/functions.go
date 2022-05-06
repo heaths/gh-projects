@@ -1,7 +1,10 @@
 package template
 
 import (
+	"bytes"
 	"fmt"
+	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/charmbracelet/glamour"
@@ -53,5 +56,60 @@ func markdown(isTTY func() bool) func(string) (string, error) {
 		}
 
 		return text, nil
+	}
+}
+
+type tableState struct {
+	b  *bytes.Buffer
+	tw *tabwriter.Writer
+
+	started bool
+}
+
+func (ts *tableState) init() error {
+	if ts.b == nil {
+		ts.b = &bytes.Buffer{}
+		ts.tw = tabwriter.NewWriter(ts.b, 0, 0, 2, ' ', 0)
+	}
+
+	if ts.started {
+		return fmt.Errorf("table already started")
+	}
+
+	ts.started = true
+	return nil
+}
+
+func (ts *tableState) flush() (value string, err error) {
+	if !ts.started {
+		return "", fmt.Errorf("table not started")
+	}
+
+	err = ts.tw.Flush()
+	if err != nil {
+		return
+	}
+
+	value = ts.b.String()
+	ts.b.Reset()
+
+	ts.started = false
+	return
+}
+
+func tablerowFunc(ts *tableState) func(...string) (string, error) {
+	err := ts.init()
+	if err != nil {
+		panic(err)
+	}
+	return func(fields ...string) (string, error) {
+		_, err = fmt.Fprintf(ts.tw, "%s\n", strings.Join(fields, "\t"))
+		return "", err
+	}
+}
+
+func tablerenderFunc(ts *tableState) func() (string, error) {
+	return func() (string, error) {
+		return ts.flush()
 	}
 }

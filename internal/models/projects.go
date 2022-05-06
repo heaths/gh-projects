@@ -6,13 +6,13 @@ type Project struct {
 	ID          string
 	Number      int
 	Title       string
-	Description string `json:"shortDescription"`
-	Body        string `json:"description"`
+	Description string
+	Body        string
 	Creator     *actor
 	CreatedAt   *time.Time
 	Public      bool
 	URL         string
-	Items       projectItemNode
+	Items       *projectItemNode
 }
 type projectItemNode struct {
 	TotalCount int
@@ -21,12 +21,16 @@ type projectItemNode struct {
 }
 type ProjectItem struct {
 	ID      string
+	Title   string
+	Type    string
 	Content projectItemContent
 }
 
 type projectItemContent struct {
-	ID     string
-	Number uint32
+	ID        string
+	Number    int
+	CreatedAt *time.Time
+	State     string
 }
 
 type RepositoryProjects struct {

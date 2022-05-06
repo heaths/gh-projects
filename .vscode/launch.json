@@ -8,10 +8,9 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "edit",
+                "view",
                 "1",
-                "--body",
-                "-"
+                "--items"
             ]
         }
     ]
