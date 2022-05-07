@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
@@ -26,6 +27,10 @@ func main() {
 		Both current and beta projects are supported.
 		`),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			if !gh.IsAuthenticated("") {
+				return fmt.Errorf("use `gh auth login -s write:org` to authenticate")
+			}
+
 			var repo repository.Repository
 			if repoFlag != "" {
 				repo, err = repository.Parse(repoFlag)

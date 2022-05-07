@@ -8,9 +8,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "view",
-                "1",
-                "--items"
+                "list"
             ]
         }
     ]

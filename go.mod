@@ -11,6 +11,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 )
 
+replace github.com/cli/go-gh => ../go-gh
+
 require (
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
