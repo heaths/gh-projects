@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func Pluralize(num int, thing string) string {
 	if num == 1 {
@@ -8,4 +11,14 @@ func Pluralize(num int, thing string) string {
 	}
 
 	return fmt.Sprintf("%d %ss", num, thing)
+}
+
+func StringSliceContains(value string, values []string) bool {
+	for _, v := range values {
+		if strings.EqualFold(value, v) {
+			return true
+		}
+	}
+
+	return false
 }

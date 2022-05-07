@@ -10,7 +10,8 @@
             "args": [
                 "view",
                 "1",
-                "--items"
+                "--items",
+                "--verbose"
             ]
         }
     ]
