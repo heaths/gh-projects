@@ -7,6 +7,7 @@ import (
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/repository"
 	"github.com/heaths/gh-projects/internal/cmd"
+	"github.com/heaths/gh-projects/internal/logger"
 	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +27,10 @@ func main() {
 		Both current and beta projects are supported.
 		`),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			if opts.Verbose {
+				opts.Log = logger.New(opts.Console, "black+h")
+			}
+
 			var repo repository.Repository
 			if repoFlag != "" {
 				repo, err = repository.Parse(repoFlag)

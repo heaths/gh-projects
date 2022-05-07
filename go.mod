@@ -8,7 +8,6 @@ require (
 	github.com/cli/go-gh v0.0.3
 	github.com/heaths/go-console v0.5.0
 	github.com/spf13/cobra v1.4.0
-	github.com/spf13/pflag v1.0.5
 )
 
 require (
@@ -31,6 +30,7 @@ require (
 	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/yuin/goldmark v1.4.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect

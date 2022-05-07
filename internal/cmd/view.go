@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
@@ -24,19 +23,13 @@ func NewViewCmd(globalOpts *GlobalOptions) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.GlobalOptions = *globalOpts
 
-			switch {
-			case opts.limit == 0:
-				return fmt.Errorf("limit must be greater than 1")
-			case opts.limit > 100:
-				return fmt.Errorf("limit must be less than or equal to 100")
-			}
-
 			return view(&opts)
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.items, "items", false, "Include drafts, issues, and pull requests.")
-	cmd.Flags().Uint32VarP(&opts.limit, "limit", "L", 20, "Number of items to include.")
+	cmd.Flags().BoolVar(&opts.items, "items", false, "Include drafts, issues, and pull requests")
+	IntRangeVarP(cmd, &opts.limit, "limit", "L", 20, 1, 100, "Number of items to include")
+	StringEnumVarP(cmd, &opts.state, "state", "s", "open", []string{"open", "closed", "merged", "all"}, "State of items to include")
 
 	return cmd
 }
@@ -46,11 +39,15 @@ type viewOptions struct {
 
 	number int
 	items  bool
-	limit  uint32
+	limit  int
+	state  string
 }
 
 func view(opts *viewOptions) (err error) {
-	client, err := gh.GQLClient(nil)
+	clientOpts := &api.ClientOptions{
+		Log: opts.Log,
+	}
+	client, err := gh.GQLClient(clientOpts)
 	if err != nil {
 		return
 	}
@@ -64,9 +61,34 @@ func view(opts *viewOptions) (err error) {
 	}
 
 	var data models.RepositoryProject
-	err = client.Do(queryRepositoryProjectNext, vars, &data)
+	err = client.Do(queryRepositoryProjectNext+fragmentProjectNextItems, vars, &data)
 	if err != nil {
 		return
+	}
+
+	project := data.Repository.ProjectNext
+
+	if opts.items {
+		items := make([]models.ProjectItem, 0, opts.limit)
+		for {
+			for _, item := range data.Repository.ProjectNext.Items.Nodes {
+				if equalItemState(item.Content.State, opts.state) {
+					items = append(items, item)
+				}
+			}
+
+			if len(items) < opts.limit && project.Items.PageInfo.HasNextPage {
+				vars["after"] = project.Items.PageInfo.EndCursor
+				err = client.Do(queryRepositoryProjectNextMoreItems+fragmentProjectNextItems, vars, &data)
+				if err != nil {
+					return
+				}
+			} else {
+				break
+			}
+		}
+
+		project.Items.Nodes = items
 	}
 
 	t, err := template.New(opts.Console)
@@ -74,11 +96,11 @@ func view(opts *viewOptions) (err error) {
 		return
 	}
 
-	return t.Project(data.Repository.ProjectNext)
+	return t.Project(project)
 }
 
 const queryRepositoryProjectNext = `
-query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $includeItems: Boolean = false) {
+query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $after: String, $includeItems: Boolean = false) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
@@ -96,9 +118,21 @@ query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $lim
 		}
 	}
 }
+`
 
+const queryRepositoryProjectNextMoreItems = `
+query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $after: String) {
+	repository(name: $name, owner: $owner) {
+		projectNext(number: $number) {
+			...items
+		}
+	}
+}
+`
+
+const fragmentProjectNextItems = `
 fragment items on ProjectNext {
-	items(first: $limit) {
+	items(first: $limit, after: $after) {
 		totalCount
 		nodes {
 			id
@@ -120,6 +154,25 @@ fragment items on ProjectNext {
 				}
 			}
 		}
+		pageInfo {
+			hasNextPage
+			endCursor
+		}
 	}
 }
 `
+
+func equalItemState(value, state string) bool {
+	switch state {
+	case "all":
+		return true
+	case "open":
+		return value == "OPEN"
+	case "merged":
+		return value == "MERGED"
+	case "closed":
+		return value == "CLOSED"
+	default:
+		return false
+	}
+}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
@@ -19,6 +20,7 @@ func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
 		},
 	}
 
+	IntRangeVarP(cmd, &opts.limit, "limit", "L", 30, 1, 100, "Number of projects to return")
 	cmd.Flags().StringVarP(&opts.search, "search", "S", "", "Search projects.")
 
 	return cmd
@@ -27,11 +29,15 @@ func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
 type listOptions struct {
 	GlobalOptions
 
+	limit  int
 	search string
 }
 
 func list(opts *listOptions) (err error) {
-	client, err := gh.GQLClient(nil)
+	clientOpts := &api.ClientOptions{
+		Log: opts.Log,
+	}
+	client, err := gh.GQLClient(clientOpts)
 	if err != nil {
 		return
 	}
@@ -39,7 +45,7 @@ func list(opts *listOptions) (err error) {
 	vars := map[string]interface{}{
 		"owner": opts.Repo.Owner(),
 		"name":  opts.Repo.Name(),
-		"first": 30,
+		"first": opts.limit,
 	}
 
 	if opts.search != "" {

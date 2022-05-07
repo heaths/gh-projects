@@ -86,15 +86,15 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 	}
 
 	// title is required so we don't need a separate variable.
-	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Set the new title.")
-	cmd.Flags().StringVarP(&description, "description", "d", "", "Sets the new short description.")
+	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Set the new title")
+	cmd.Flags().StringVarP(&description, "description", "d", "", "Sets the new short description")
 
 	// Need to pass globalOpts.Console since opts.GlobalOptions has not yet been set.
-	StdinStringVarP(cmd.Flags(), globalOpts.Console.Stdin(), &body, "body", "b", "", "Set the new body.")
-	cmd.Flags().BoolVar(&public, "public", false, "Set the visibility.")
+	StdinStringVarP(cmd, globalOpts.Console.Stdin(), &body, "body", "b", "", "Set the new body")
+	cmd.Flags().BoolVar(&public, "public", false, "Set the visibility")
 
-	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add.")
-	cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove.")
+	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add")
+	cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove")
 
 	return cmd
 }
@@ -113,7 +113,10 @@ type editOptions struct {
 }
 
 func edit(opts *editOptions) (err error) {
-	client, err := gh.GQLClient(nil)
+	clientOpts := &api.ClientOptions{
+		Log: opts.Log,
+	}
+	client, err := gh.GQLClient(clientOpts)
 	if err != nil {
 		return
 	}
