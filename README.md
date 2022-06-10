@@ -32,6 +32,7 @@ Edit a project:
 ```bash
 gh projects edit 1 -d "A short description" --public
 gh projects edit 1 --add-issue 4 --add-issue 8
+gh projects edit 1 --add-issue 4,8 -f Status=Todo -f Iteration="Iteration 1"
 ```
 
 ### list
