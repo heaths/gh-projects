@@ -43,8 +43,11 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 			  Ship our _initial release_!
 			  EOF
 
-			# add issues to a project referenced by the current repository
+			# add multiple issues to a project referenced by the current repository
 			$ gh projects edit 1 --add-issue 1 --add-issue 2
+
+			# add multiple issues to a project and set custom fields
+			$ gh projects edit 1 --add-issue 1,2 -f Status=Todo -f Iteration="Iteration 1"
 		`),
 		Args: ProjectNumberArg(&opts.number),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,7 +104,7 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add")
 	cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove")
 
-	cmd.Flags().StringToStringVarP(&opts.fields, "field", "f", map[string]string{}, "Set field values when adding issues formatted as name=value")
+	StringToStringVarP(cmd, &opts.fields, "field", "f", nil, "Set field values when adding issues")
 
 	return cmd
 }
@@ -289,16 +292,18 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 			return nil, err
 		}
 
-		for _, field := range data.Repository.ProjectNext.Fields.Nodes {
-			for k := range opts.fields {
-				if strings.EqualFold(k, field.Name) {
-					fields[k] = models.Field{
-						ID:       field.ID,
-						DataType: field.DataType,
-						Settings: field.Settings,
-					}
+		for name := range opts.fields {
+			found := false
+			for _, field := range data.Repository.ProjectNext.Fields.Nodes {
+				if strings.EqualFold(name, field.Name) {
+					fields[name] = models.NewField(field.ID, field.DataType, field.Settings)
+					found = true
 					break
 				}
+			}
+
+			if !found {
+				return nil, fmt.Errorf("field %q not defined", name)
 			}
 		}
 
@@ -307,11 +312,6 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 		} else {
 			break
 		}
-	}
-
-	if len(fields) != len(opts.fields) {
-		// TODO: Emit which fields were not found.
-		return nil, fmt.Errorf("some fields are not defined")
 	}
 
 	return fields, nil
@@ -324,10 +324,17 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 	}
 
 	// Fields should be indexed in both maps based on user-specified casing.
-	for name, field := range fields {
-		value := opts.fields[name]
-		if v, err := field.UnmarshalSettings(); err == nil {
-			switch t := v.(type) {
+	for name, value := range opts.fields {
+		field := fields[name]
+		if settings, err := field.Settings(); err == nil {
+			switch t := settings.(type) {
+			case *models.IterationFieldSettings:
+				for _, iteration := range t.Configuration.Iterations {
+					if strings.EqualFold(value, iteration.Title) {
+						value = iteration.ID
+						break
+					}
+				}
 			case *models.SingleSelectFieldSettings:
 				for _, option := range t.Options {
 					if strings.EqualFold(value, option.Name) {
@@ -344,7 +351,7 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 		var data interface{}
 		err := client.Do(mutationUpdateProjectNextItemField, vars, &data)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to update field %q: %v", name, err)
 		}
 	}
 

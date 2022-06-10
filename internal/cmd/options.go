@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"strconv"
@@ -152,4 +154,80 @@ func parseNumber(number, message string) (int, error) {
 	} else {
 		return int(num), nil
 	}
+}
+
+// StringToStringVarP was copied from github.com/spf13/pflag to change the usage text to something more intuitive.
+func StringToStringVarP(cmd *cobra.Command, p *map[string]string, name, shorthand string, value map[string]string, usage string) {
+	cmd.Flags().VarP(newStringToStringValue(value, p), name, shorthand, usage)
+}
+
+type stringToStringValue struct {
+	value   *map[string]string
+	changed bool
+}
+
+func newStringToStringValue(val map[string]string, p *map[string]string) *stringToStringValue {
+	ssv := new(stringToStringValue)
+	ssv.value = p
+	*ssv.value = val
+	return ssv
+}
+
+func (s *stringToStringValue) Set(val string) error {
+	var ss []string
+	n := strings.Count(val, "=")
+	switch n {
+	case 0:
+		return fmt.Errorf("%s must be formatted as name=value", val)
+	case 1:
+		ss = append(ss, strings.Trim(val, `"`))
+	default:
+		r := csv.NewReader(strings.NewReader(val))
+		var err error
+		ss, err = r.Read()
+		if err != nil {
+			return err
+		}
+	}
+
+	out := make(map[string]string, len(ss))
+	for _, pair := range ss {
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) != 2 {
+			return fmt.Errorf("%s must be formatted as name=value", pair)
+		}
+		out[kv[0]] = kv[1]
+	}
+	if !s.changed {
+		*s.value = out
+	} else {
+		for k, v := range out {
+			(*s.value)[k] = v
+		}
+	}
+	s.changed = true
+	return nil
+}
+
+func (s *stringToStringValue) Type() string {
+	return "name=value"
+}
+
+func (s *stringToStringValue) String() string {
+	if len(*s.value) == 0 {
+		return ""
+	}
+
+	records := make([]string, 0, len(*s.value)>>1)
+	for k, v := range *s.value {
+		records = append(records, k+"="+v)
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	if err := w.Write(records); err != nil {
+		panic(err)
+	}
+	w.Flush()
+	return "[" + strings.TrimSpace(buf.String()) + "]"
 }
