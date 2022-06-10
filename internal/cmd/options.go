@@ -173,7 +173,6 @@ func newStringToStringValue(val map[string]string, p *map[string]string) *string
 	return ssv
 }
 
-// Format: a=1,b=2
 func (s *stringToStringValue) Set(val string) error {
 	var ss []string
 	n := strings.Count(val, "=")
