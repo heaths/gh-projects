@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
@@ -81,6 +82,10 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 				opts.removeIssues[i] = issue
 			}
 
+			if len(opts.fields) > 0 && len(opts.addIssues) == 0 {
+				return fmt.Errorf("--field requires --add-issue")
+			}
+
 			return edit(&opts)
 		},
 	}
@@ -96,6 +101,8 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 	cmd.Flags().StringSliceVar(&addIssues, "add-issue", nil, "Issues or pull requests to add")
 	cmd.Flags().StringSliceVar(&removeIssues, "remove-issue", nil, "Issues or pull requests to remove")
 
+	cmd.Flags().StringToStringVarP(&opts.fields, "field", "f", map[string]string{}, "Set field values when adding issues formatted as name=value")
+
 	return cmd
 }
 
@@ -110,6 +117,8 @@ type editOptions struct {
 
 	addIssues    []int
 	removeIssues []int
+
+	fields map[string]string
 }
 
 func edit(opts *editOptions) (err error) {
@@ -204,6 +213,14 @@ func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err e
 		"id":    projectID,
 	}
 
+	var fields map[string]models.Field
+	if len(opts.fields) > 0 {
+		fields, err = getFields(client, opts)
+		if err != nil {
+			return
+		}
+	}
+
 	for _, issue := range opts.addIssues {
 		vars["number"] = issue
 
@@ -216,14 +233,122 @@ func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err e
 		contentID := data.Repository.IssueOrPullRequest.ID
 		vars["contentId"] = contentID
 
-		var mutationData map[string]interface{}
+		var mutationData struct {
+			AddProjectNextItem struct {
+				ProjectNextItem models.ProjectItem
+			}
+		}
+
 		err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
 		if err != nil {
 			return
 		}
+
+		if len(fields) > 0 {
+			itemID := mutationData.AddProjectNextItem.ProjectNextItem.ID
+			err = updateFields(client, projectID, itemID, fields, opts)
+			if err != nil {
+				return
+			}
+		}
 	}
 
 	return
+}
+
+func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field, error) {
+	vars := map[string]interface{}{
+		"owner":  opts.Repo.Owner(),
+		"name":   opts.Repo.Name(),
+		"number": opts.number,
+	}
+
+	var data struct {
+		Repository struct {
+			ProjectNext struct {
+				Fields struct {
+					Nodes []struct {
+						ID       string
+						Name     string
+						DataType string
+						Settings string
+					}
+					PageInfo struct {
+						HasNextPage bool
+						EndCursor   string
+					}
+				}
+			}
+		}
+	}
+
+	fields := make(map[string]models.Field, len(opts.fields))
+	for {
+		err := client.Do(queryRepositoryProjectNextFields, vars, &data)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, field := range data.Repository.ProjectNext.Fields.Nodes {
+			for k := range opts.fields {
+				if strings.EqualFold(k, field.Name) {
+					fields[k] = models.Field{
+						ID:       field.ID,
+						DataType: field.DataType,
+						Settings: field.Settings,
+					}
+					break
+				}
+			}
+		}
+
+		if data.Repository.ProjectNext.Fields.PageInfo.HasNextPage {
+			vars["after"] = data.Repository.ProjectNext.Fields.PageInfo.EndCursor
+		} else {
+			break
+		}
+	}
+
+	if len(fields) != len(opts.fields) {
+		// TODO: Emit which fields were not found.
+		return nil, fmt.Errorf("some fields are not defined")
+	}
+
+	return fields, nil
+}
+
+func updateFields(client api.GQLClient, projectID, itemID string, fields map[string]models.Field, opts *editOptions) error {
+	vars := map[string]interface{}{
+		"projectId": projectID,
+		"itemId":    itemID,
+	}
+
+	// Fields should be indexed in both maps based on user-specified casing.
+	for name, field := range fields {
+		value := opts.fields[name]
+		if v, err := field.UnmarshalSettings(); err == nil {
+			switch t := v.(type) {
+			case *models.SingleSelectFieldSettings:
+				for _, option := range t.Options {
+					if strings.EqualFold(value, option.Name) {
+						value = option.ID
+						break
+					}
+				}
+			}
+		}
+
+		vars["fieldId"] = field.ID
+		vars["value"] = value
+
+		var data interface{}
+		err := client.Do(mutationUpdateProjectNextItemField, vars, &data)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err error) {
@@ -382,6 +507,39 @@ const queryRepositoryProjectNextID = `
 query RepositoryProjectNextID($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
+			id
+		}
+	}
+}
+`
+
+const queryRepositoryProjectNextFields = `
+query RepositoryProjectNextFields($owner: String!, $name: String!, $number: Int!, $after: String) {
+	repository(owner: $owner, name: $name) {
+		projectNext(number: $number) {
+			fields(first: 30, after: $after) {
+				nodes {
+					id
+					name
+					dataType
+					settings
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
+			}
+		}
+	}
+}
+`
+
+const mutationUpdateProjectNextItemField = `
+mutation UpdateProjectNextItemField($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
+	updateProjectNextItemField(
+		input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value}
+	) {
+		projectNextItem {
 			id
 		}
 	}
