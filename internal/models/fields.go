@@ -5,25 +5,49 @@ import (
 	"fmt"
 )
 
-type Field struct {
-	ID string
-	// Name     string
-	DataType string
-	Settings string
+func NewField(id, dataType, settings string) Field {
+	return Field{
+		ID:       id,
+		DataType: dataType,
+		settings: settings,
+	}
 }
 
-func (f *Field) UnmarshalSettings() (v interface{}, err error) {
+type Field struct {
+	ID       string
+	DataType string
+
+	settings string
+}
+
+func (f *Field) Settings() (settings FieldSettings, err error) {
 	switch f.DataType {
+	case "ITERATION":
+		settings = &IterationFieldSettings{}
+		err = json.Unmarshal([]byte(f.settings), &settings)
 	case "SINGLE_SELECT":
-		v = &SingleSelectFieldSettings{}
-		err = json.Unmarshal([]byte(f.Settings), &v)
+		settings = &SingleSelectFieldSettings{}
+		err = json.Unmarshal([]byte(f.settings), &settings)
 	default:
 		err = fmt.Errorf("unsupported data type %q", f.DataType)
 	}
 	return
 }
 
+type FieldSettings interface{}
+
+type IterationFieldSettings struct {
+	FieldSettings
+	Configuration struct {
+		Iterations []struct {
+			ID    string
+			Title string
+		}
+	}
+}
+
 type SingleSelectFieldSettings struct {
+	FieldSettings
 	Options []struct {
 		ID   string
 		Name string
