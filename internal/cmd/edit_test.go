@@ -709,6 +709,9 @@ func TestEdit(t *testing.T) {
 				Console: fake,
 				Repo:    repo,
 				Verbose: tt.opts.Verbose,
+
+				authToken: "***",
+				host:      "github.com",
 			}
 
 			if tt.opts == nil {

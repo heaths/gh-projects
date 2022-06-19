@@ -138,7 +138,9 @@ type editOptions struct {
 
 func edit(opts *editOptions) (err error) {
 	clientOpts := &api.ClientOptions{
-		Log: opts.Log,
+		AuthToken: opts.authToken,
+		Host:      opts.host,
+		Log:       opts.Log,
 	}
 	client, err := gh.GQLClient(clientOpts)
 	if err != nil {

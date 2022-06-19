@@ -24,6 +24,10 @@ type GlobalOptions struct {
 
 	Repo    repository.Repository
 	Verbose bool
+
+	// Test-only options.
+	host      string
+	authToken string
 }
 
 func IntRangeVarP(cmd *cobra.Command, p *int, name, shorthand string, defaultValue int, min, max int, usage string) {
