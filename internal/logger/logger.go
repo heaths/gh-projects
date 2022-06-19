@@ -7,7 +7,7 @@ import (
 	"github.com/heaths/go-console/pkg/colorscheme"
 )
 
-func New(con *console.Console, style string) io.Writer {
+func New(con console.Console, style string) io.Writer {
 	cs := con.ColorScheme().Clone(
 		colorscheme.WithTTY(con.IsStderrTTY),
 	)

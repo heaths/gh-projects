@@ -14,12 +14,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	DefaultWorkerCount int = 10
+)
+
 type GlobalOptions struct {
-	Console *console.Console
+	Console console.Console
 	Log     io.Writer
 
 	Repo    repository.Repository
 	Verbose bool
+
+	// Test-only options.
+	host      string
+	authToken string
 }
 
 func IntRangeVarP(cmd *cobra.Command, p *int, name, shorthand string, defaultValue int, min, max int, usage string) {

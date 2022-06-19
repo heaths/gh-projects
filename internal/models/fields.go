@@ -5,10 +5,11 @@ import (
 	"fmt"
 )
 
-func NewField(id, dataType, settings string) Field {
+func NewField(id, dataType, settings, value string) Field {
 	return Field{
 		ID:       id,
 		DataType: dataType,
+		Value:    value,
 		settings: settings,
 	}
 }
@@ -16,6 +17,7 @@ func NewField(id, dataType, settings string) Field {
 type Field struct {
 	ID       string
 	DataType string
+	Value    string
 
 	settings string
 }

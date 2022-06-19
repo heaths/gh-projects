@@ -11,7 +11,7 @@ defaults:
     shell: bash
 
 env:
-  GOVERSION: '1.17'
+  GOVERSION: '1.18'
 
 jobs:
   test:

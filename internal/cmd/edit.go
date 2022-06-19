@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,9 +11,10 @@ import (
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
-func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
+func NewEditCmd(globalOpts *GlobalOptions, runFunc func(*editOptions) error) *cobra.Command {
 	var description, body string
 	var public bool
 	var addIssues, removeIssues []string
@@ -65,31 +67,39 @@ func NewEditCmd(globalOpts *GlobalOptions) *cobra.Command {
 				opts.public = &public
 			}
 
-			opts.addIssues = make([]int, len(addIssues))
-			for i, issue := range addIssues {
-				issue, err := parseNumber(issue, "invalid issue number")
-				if err != nil {
-					return err
-				}
+			if addIssuesCount := len(addIssues); addIssuesCount > 0 {
+				opts.addIssues = make([]int, len(addIssues))
+				for i, issue := range addIssues {
+					issue, err := parseNumber(issue, "invalid issue number")
+					if err != nil {
+						return err
+					}
 
-				opts.addIssues[i] = issue
+					opts.addIssues[i] = issue
+				}
 			}
 
-			opts.removeIssues = make([]int, len(removeIssues))
-			for i, issue := range removeIssues {
-				issue, err := parseNumber(issue, "invalid issue number")
-				if err != nil {
-					return err
-				}
+			if removeIssuesCount := len(removeIssues); removeIssuesCount > 0 {
+				opts.removeIssues = make([]int, len(removeIssues))
+				for i, issue := range removeIssues {
+					issue, err := parseNumber(issue, "invalid issue number")
+					if err != nil {
+						return err
+					}
 
-				opts.removeIssues[i] = issue
+					opts.removeIssues[i] = issue
+				}
 			}
 
 			if len(opts.fields) > 0 && len(opts.addIssues) == 0 {
 				return fmt.Errorf("--field requires --add-issue")
 			}
 
-			return edit(&opts)
+			if runFunc == nil {
+				runFunc = edit
+			}
+
+			return runFunc(&opts)
 		},
 	}
 
@@ -122,11 +132,15 @@ type editOptions struct {
 	removeIssues []int
 
 	fields map[string]string
+
+	workerCount int
 }
 
 func edit(opts *editOptions) (err error) {
 	clientOpts := &api.ClientOptions{
-		Log: opts.Log,
+		AuthToken: opts.authToken,
+		Host:      opts.host,
+		Log:       opts.Log,
 	}
 	client, err := gh.GQLClient(clientOpts)
 	if err != nil {
@@ -146,6 +160,8 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	projectID := projectData.Repository.ProjectNext.ID
+	projectURL := projectData.Repository.ProjectNext.URL
+
 	vars["id"] = projectID
 	if opts.title != "" {
 		vars["title"] = opts.title
@@ -160,15 +176,18 @@ func edit(opts *editOptions) (err error) {
 		vars["public"] = opts.public
 	}
 
-	var updatedProjectData struct {
-		UpdateProjectNext models.ProjectNode
-	}
-	err = client.Do(mutationUpdateProjectNext, vars, &updatedProjectData)
-	if err != nil {
-		return
-	}
+	if len(vars) > 1 {
+		var updatedProjectData struct {
+			UpdateProjectNext models.ProjectNode
+		}
+		err = client.Do(mutationUpdateProjectNext, vars, &updatedProjectData)
+		if err != nil {
+			return
+		}
 
-	projectURL := updatedProjectData.UpdateProjectNext.ProjectNext.URL
+		// Shouldn't change, but just to assert mocks are returning the right data.
+		projectURL = updatedProjectData.UpdateProjectNext.ProjectNext.URL
+	}
 
 	if len(opts.addIssues) > 0 {
 		count := utils.Pluralize(len(opts.addIssues), "issue")
@@ -182,7 +201,7 @@ func edit(opts *editOptions) (err error) {
 		}
 
 		if opts.Verbose && opts.Console.IsStdoutTTY() {
-			fmt.Fprintf(opts.Console.Stdout(), "Added %s", count)
+			fmt.Fprintf(opts.Console.Stdout(), "Added %s\n", count)
 		}
 	}
 
@@ -198,7 +217,7 @@ func edit(opts *editOptions) (err error) {
 		}
 
 		if opts.Verbose && opts.Console.IsStdoutTTY() {
-			fmt.Fprintf(opts.Console.Stdout(), "Removed %s", count)
+			fmt.Fprintf(opts.Console.Stdout(), "Removed %s\n", count)
 		}
 	}
 
@@ -210,12 +229,6 @@ func edit(opts *editOptions) (err error) {
 }
 
 func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err error) {
-	vars := map[string]interface{}{
-		"owner": opts.Repo.Owner(),
-		"name":  opts.Repo.Name(),
-		"id":    projectID,
-	}
-
 	var fields map[string]models.Field
 	if len(opts.fields) > 0 {
 		fields, err = getFields(client, opts)
@@ -224,37 +237,74 @@ func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err e
 		}
 	}
 
-	for _, issue := range opts.addIssues {
-		vars["number"] = issue
-
-		var data models.RepositoryIssueOrPullRequest
-		err = client.Do(queryRepositoryIssueOrPullRequestID, vars, &data)
-		if err != nil {
-			return
-		}
-
-		contentID := data.Repository.IssueOrPullRequest.ID
-		vars["contentId"] = contentID
-
-		var mutationData struct {
-			AddProjectNextItem struct {
-				ProjectNextItem models.ProjectItem
-			}
-		}
-
-		err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
-		if err != nil {
-			return
-		}
-
-		if len(fields) > 0 {
-			itemID := mutationData.AddProjectNextItem.ProjectNextItem.ID
-			err = updateFields(client, projectID, itemID, fields, opts)
-			if err != nil {
-				return
-			}
-		}
+	workerCount := opts.workerCount
+	if workerCount < 1 {
+		workerCount = DefaultWorkerCount
 	}
+	if issueCount := len(opts.addIssues); workerCount > issueCount {
+		workerCount = issueCount
+	}
+
+	issues := make(chan int)
+	wg, ctx := errgroup.WithContext(context.Background())
+
+	for i := 0; i < workerCount; i++ {
+		wg.Go(func() error {
+			vars := map[string]interface{}{
+				"owner": opts.Repo.Owner(),
+				"name":  opts.Repo.Name(),
+				"id":    projectID,
+			}
+
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case n, ok := <-issues:
+					if !ok {
+						return nil
+					}
+
+					vars["number"] = n
+
+					var data models.RepositoryIssueOrPullRequest
+					err := client.Do(queryRepositoryIssueOrPullRequestID, vars, &data)
+					if err != nil {
+						return err
+					}
+
+					contentID := data.Repository.IssueOrPullRequest.ID
+					vars["contentId"] = contentID
+
+					var mutationData struct {
+						AddProjectNextItem struct {
+							ProjectNextItem models.ProjectItem
+						}
+					}
+
+					err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
+					if err != nil {
+						return err
+					}
+
+					if len(fields) > 0 {
+						itemID := mutationData.AddProjectNextItem.ProjectNextItem.ID
+						err = updateFields(client, projectID, itemID, fields, opts)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+		})
+	}
+
+	for _, issue := range opts.addIssues {
+		issues <- issue
+	}
+
+	close(issues)
+	err = wg.Wait()
 
 	return
 }
@@ -292,22 +342,25 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 			return nil, err
 		}
 
-		for name := range opts.fields {
+		hasNextPage := data.Repository.ProjectNext.Fields.PageInfo.HasNextPage
+		for name, value := range opts.fields {
 			found := false
 			for _, field := range data.Repository.ProjectNext.Fields.Nodes {
 				if strings.EqualFold(name, field.Name) {
-					fields[name] = models.NewField(field.ID, field.DataType, field.Settings)
+					fields[name] = models.NewField(field.ID, field.DataType, field.Settings, value)
 					found = true
+					delete(opts.fields, name)
 					break
 				}
 			}
 
-			if !found {
+			if !found && !hasNextPage {
 				return nil, fmt.Errorf("field %q not defined", name)
 			}
 		}
 
-		if data.Repository.ProjectNext.Fields.PageInfo.HasNextPage {
+		// Only fetch more pages if some specified fields haven't been found.
+		if hasNextPage && len(opts.fields) > 0 {
 			vars["after"] = data.Repository.ProjectNext.Fields.PageInfo.EndCursor
 		} else {
 			break
@@ -324,21 +377,20 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 	}
 
 	// Fields should be indexed in both maps based on user-specified casing.
-	for name, value := range opts.fields {
-		field := fields[name]
+	for name, field := range fields {
 		if settings, err := field.Settings(); err == nil {
 			switch t := settings.(type) {
 			case *models.IterationFieldSettings:
 				for _, iteration := range t.Configuration.Iterations {
-					if strings.EqualFold(value, iteration.Title) {
-						value = iteration.ID
+					if strings.EqualFold(field.Value, iteration.Title) {
+						field.Value = iteration.ID
 						break
 					}
 				}
 			case *models.SingleSelectFieldSettings:
 				for _, option := range t.Options {
-					if strings.EqualFold(value, option.Name) {
-						value = option.ID
+					if strings.EqualFold(field.Value, option.Name) {
+						field.Value = option.ID
 						break
 					}
 				}
@@ -346,7 +398,7 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 		}
 
 		vars["fieldId"] = field.ID
-		vars["value"] = value
+		vars["value"] = field.Value
 
 		var data interface{}
 		err := client.Do(mutationUpdateProjectNextItemField, vars, &data)
@@ -515,6 +567,7 @@ query RepositoryProjectNextID($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
 		projectNext(number: $number) {
 			id
+			url
 		}
 	}
 }
