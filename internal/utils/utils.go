@@ -13,6 +13,10 @@ func Pluralize(num int, thing string) string {
 	return fmt.Sprintf("%d %ss", num, thing)
 }
 
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 func StringSliceContains(value string, values []string) bool {
 	for _, v := range values {
 		if strings.EqualFold(value, v) {

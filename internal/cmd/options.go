@@ -14,8 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	DefaultWorkerCount int = 10
+)
+
 type GlobalOptions struct {
-	Console *console.Console
+	Console console.Console
 	Log     io.Writer
 
 	Repo    repository.Repository

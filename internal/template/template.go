@@ -19,7 +19,7 @@ type Template struct {
 	ts tableState
 }
 
-func New(c *console.Console) (*Template, error) {
+func New(c console.Console) (*Template, error) {
 	templ := tt.New("")
 	t := &Template{
 		t: templ,
