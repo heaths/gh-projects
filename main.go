@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/pkg/auth"
 	"github.com/cli/go-gh/pkg/repository"
 	"github.com/heaths/gh-projects/internal/cmd"
 	"github.com/heaths/gh-projects/internal/logger"
@@ -31,13 +33,30 @@ func main() {
 				opts.Log = logger.New(opts.Console, "black+h")
 			}
 
+			// Try to get the host from the specified repo.
 			var repo repository.Repository
 			if repoFlag != "" {
 				repo, err = repository.Parse(repoFlag)
 				if err != nil {
 					return
 				}
-			} else {
+			}
+
+			// Validate that the user is authenticated.
+			var host string
+			if repo != nil {
+				host = repo.Host()
+			}
+			if host == "" {
+				host, _ = auth.DefaultHost()
+			}
+			token, _ := auth.TokenForHost(host)
+			if token == "" {
+				return fmt.Errorf("use `gh auth login -s write:org` to authenticate")
+			}
+
+			// If the repo is still unassigned, try to use the current repository.
+			if repo == nil {
 				repo, err = gh.CurrentRepository()
 				if err != nil {
 					return
