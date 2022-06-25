@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/charmbracelet/glamour v0.5.0
-	github.com/cli/go-gh v0.0.3
+	github.com/cli/go-gh v0.0.4-0.20220623035622-91ca4ef447d4
 	github.com/heaths/go-console v0.6.0
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.2

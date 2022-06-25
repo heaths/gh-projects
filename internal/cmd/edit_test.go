@@ -592,7 +592,7 @@ func TestEdit(t *testing.T) {
 						]
 					}`)
 			},
-			wantErr: "GQL error: Could not resolve to an issue or pull request with the number of 99.",
+			wantErr: "GraphQL: Could not resolve to an issue or pull request with the number of 99.",
 		},
 		{
 			name: "invalid field value",
@@ -693,7 +693,7 @@ func TestEdit(t *testing.T) {
 						]
 					}`)
 			},
-			wantErr: `failed to update field "Cost": GQL error: Column value must be a valid value for number column`,
+			wantErr: `failed to update field "Cost": GraphQL: Column value must be a valid value for number column`,
 		},
 	}
 
