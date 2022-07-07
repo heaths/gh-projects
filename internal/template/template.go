@@ -58,6 +58,7 @@ func New(c console.Console) (*Template, error) {
 		},
 		"tablerow":    tablerowFunc(&t.ts),
 		"tablerender": tablerenderFunc(&t.ts),
+		"truncate":    truncate,
 		"type": func(it string) string {
 			switch it {
 			case "DRAFT_ISSUE":
@@ -91,7 +92,7 @@ func (t *Template) Project(project models.Project) error {
 		{{if isTTY}}  {{end}}{{markdown .Body}}{{end}}{{with .Items}}
 		Showing {{len .Nodes}} of {{pluralize .TotalCount "item"}}
 
-		{{range .Nodes}}{{tablerow (type .Type) (number .Content.Number) .Title (state .Content.State) (ago .Content.CreatedAt | dim)}}{{end}}{{tablerender}}{{end}}{{if isTTY}}
+		{{range .Nodes}}{{tablerow (type .Type) (number .Content.Number) (.Title | truncate 80) (state .Content.State) (ago .Content.CreatedAt | dim)}}{{end}}{{tablerender}}{{end}}{{if isTTY}}
 		{{printf "View this project on GitHub: %s" .URL | dim}}{{end}}
 	`)); err != nil {
 		return err
