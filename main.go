@@ -52,7 +52,7 @@ func main() {
 			}
 			token, _ := auth.TokenForHost(host)
 			if token == "" {
-				return fmt.Errorf("use `gh auth login -s write:org` to authenticate")
+				return fmt.Errorf("use `gh auth login -s project` to authenticate with required scopes")
 			}
 
 			// If the repo is still unassigned, try to use the current repository.

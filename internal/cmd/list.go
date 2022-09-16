@@ -62,7 +62,7 @@ func list(opts *listOptions) (err error) {
 			return
 		}
 
-		projectsNode := data.Repository.ProjectsNext
+		projectsNode := data.Repository.ProjectsV2
 		if projects == nil {
 			totalCount = projectsNode.TotalCount
 			if totalCount == 0 {
@@ -95,7 +95,7 @@ func list(opts *listOptions) (err error) {
 const queryRepositoryProjectsNext = `
 query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $after: String, $search: String) {
 	repository(owner: $owner, name: $name) {
-		projectsNext(first: $first, after: $after, query: $search) {
+		projectsV2(first: $first, after: $after, query: $search) {
 			totalCount
 			nodes {
 				id

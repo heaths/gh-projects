@@ -154,13 +154,13 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	var projectData models.RepositoryProject
-	err = client.Do(queryRepositoryProjectNextID, vars, &projectData)
+	err = client.Do(queryRepositoryProjectV2ID, vars, &projectData)
 	if err != nil {
 		return
 	}
 
-	projectID := projectData.Repository.ProjectNext.ID
-	projectURL := projectData.Repository.ProjectNext.URL
+	projectID := projectData.Repository.ProjectV2.ID
+	projectURL := projectData.Repository.ProjectV2.URL
 
 	vars["id"] = projectID
 	if opts.title != "" {
@@ -178,15 +178,15 @@ func edit(opts *editOptions) (err error) {
 
 	if len(vars) > 1 {
 		var updatedProjectData struct {
-			UpdateProjectNext models.ProjectNode
+			UpdateProjectV2 models.ProjectNode
 		}
-		err = client.Do(mutationUpdateProjectNext, vars, &updatedProjectData)
+		err = client.Do(mutationUpdateProjectV2, vars, &updatedProjectData)
 		if err != nil {
 			return
 		}
 
 		// Shouldn't change, but just to assert mocks are returning the right data.
-		projectURL = updatedProjectData.UpdateProjectNext.ProjectNext.URL
+		projectURL = updatedProjectData.UpdateProjectV2.ProjectV2.URL
 	}
 
 	if len(opts.addIssues) > 0 {
@@ -277,18 +277,18 @@ func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err e
 					vars["contentId"] = contentID
 
 					var mutationData struct {
-						AddProjectNextItem struct {
-							ProjectNextItem models.ProjectItem
+						AddProjectV2ItemByID struct {
+							Item models.ProjectItem
 						}
 					}
 
-					err = client.Do(mutationAddProjectNextItem, vars, &mutationData)
+					err = client.Do(mutationAddProjectV2Item, vars, &mutationData)
 					if err != nil {
 						return err
 					}
 
 					if len(fields) > 0 {
-						itemID := mutationData.AddProjectNextItem.ProjectNextItem.ID
+						itemID := mutationData.AddProjectV2ItemByID.Item.ID
 						err = updateFields(client, projectID, itemID, fields, opts)
 						if err != nil {
 							return err
@@ -318,14 +318,9 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 
 	var data struct {
 		Repository struct {
-			ProjectNext struct {
+			ProjectV2 struct {
 				Fields struct {
-					Nodes []struct {
-						ID       string
-						Name     string
-						DataType string
-						Settings string
-					}
+					Nodes    []models.ProjectField
 					PageInfo struct {
 						HasNextPage bool
 						EndCursor   string
@@ -337,17 +332,22 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 
 	fields := make(map[string]models.Field, len(opts.fields))
 	for {
-		err := client.Do(queryRepositoryProjectNextFields, vars, &data)
+		err := client.Do(queryRepositoryProjectV2Fields, vars, &data)
 		if err != nil {
 			return nil, err
 		}
 
-		hasNextPage := data.Repository.ProjectNext.Fields.PageInfo.HasNextPage
+		hasNextPage := data.Repository.ProjectV2.Fields.PageInfo.HasNextPage
 		for name, value := range opts.fields {
 			found := false
-			for _, field := range data.Repository.ProjectNext.Fields.Nodes {
-				if strings.EqualFold(name, field.Name) {
-					fields[name] = models.NewField(field.ID, field.DataType, field.Settings, value)
+			for _, projectField := range data.Repository.ProjectV2.Fields.Nodes {
+				if strings.EqualFold(name, projectField.Name) {
+					field, err := models.NewField(projectField, value)
+					if err != nil {
+						return nil, err
+					}
+
+					fields[name] = *field
 					found = true
 					delete(opts.fields, name)
 					break
@@ -361,7 +361,7 @@ func getFields(client api.GQLClient, opts *editOptions) (map[string]models.Field
 
 		// Only fetch more pages if some specified fields haven't been found.
 		if hasNextPage && len(opts.fields) > 0 {
-			vars["after"] = data.Repository.ProjectNext.Fields.PageInfo.EndCursor
+			vars["after"] = data.Repository.ProjectV2.Fields.PageInfo.EndCursor
 		} else {
 			break
 		}
@@ -378,30 +378,11 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 
 	// Fields should be indexed in both maps based on user-specified casing.
 	for name, field := range fields {
-		if settings, err := field.Settings(); err == nil {
-			switch t := settings.(type) {
-			case *models.IterationFieldSettings:
-				for _, iteration := range t.Configuration.Iterations {
-					if strings.EqualFold(field.Value, iteration.Title) {
-						field.Value = iteration.ID
-						break
-					}
-				}
-			case *models.SingleSelectFieldSettings:
-				for _, option := range t.Options {
-					if strings.EqualFold(field.Value, option.Name) {
-						field.Value = option.ID
-						break
-					}
-				}
-			}
-		}
-
 		vars["fieldId"] = field.ID
 		vars["value"] = field.Value
 
 		var data interface{}
-		err := client.Do(mutationUpdateProjectNextItemField, vars, &data)
+		err := client.Do(mutationUpdateProjectV2ItemFieldValue, vars, &data)
 		if err != nil {
 			return fmt.Errorf("failed to update field %q: %v", name, err)
 		}
@@ -438,7 +419,7 @@ func removeItems(client api.GQLClient, projectID string, opts *editOptions) (err
 		vars["itemId"] = itemID
 
 		var mutationData map[string]interface{}
-		err = client.Do(mutationDeleteProjectNextItem, vars, &mutationData)
+		err = client.Do(mutationDeleteProjectV2Item, vars, &mutationData)
 		if err != nil {
 			return
 		}
@@ -459,12 +440,12 @@ func listItems(client api.GQLClient, number int, opts *GlobalOptions) ([]models.
 	var projectItems []models.ProjectItem
 	var i int
 	for {
-		err := client.Do(queryRepositoryProjectNextItems, vars, &data)
+		err := client.Do(queryRepositoryProjectV2Items, vars, &data)
 		if err != nil {
 			return nil, err
 		}
 
-		projectItemsNode := data.Repository.ProjectNext.Items
+		projectItemsNode := data.Repository.ProjectV2.Items
 		if projectItems == nil {
 			totalCount := projectItemsNode.TotalCount
 			if totalCount == 0 {
@@ -488,19 +469,19 @@ func listItems(client api.GQLClient, number int, opts *GlobalOptions) ([]models.
 	return projectItems, nil
 }
 
-const mutationAddProjectNextItem = `
-mutation AddProjectNextItem($id: ID!, $contentId: ID!) {
-	addProjectNextItem(input: {projectId: $id, contentId: $contentId}) {
-		projectNextItem {
+const mutationAddProjectV2Item = `
+mutation AddProjectV2ItemById($id: ID!, $contentId: ID!) {
+	addProjectV2ItemById(input: {projectId: $id, contentId: $contentId}) {
+		item {
 			id
 		}
 	}
 }
 `
 
-const mutationDeleteProjectNextItem = `
-mutation DeleteProjectNextItem($id: ID!, $itemId: ID!) {
-	deleteProjectNextItem(input: {projectId: $id, itemId: $itemId}) {
+const mutationDeleteProjectV2Item = `
+mutation DeleteProjectV2Item($id: ID!, $itemId: ID!) {
+	deleteProjectV2Item(input: {projectId: $id, itemId: $itemId}) {
 		deletedItemId
 	}
 }
@@ -521,10 +502,10 @@ query RepositoryIssueOrPullRequestID($owner: String!, $name: String!, $number: I
 }
 `
 
-const queryRepositoryProjectNextItems = `
-query RepositoryProjectNextItems($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
+const queryRepositoryProjectV2Items = `
+query RepositoryProjectV2Items($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
 	repository(owner: $owner, name: $name) {
-		projectNext(number: $number) {
+		projectV2(number: $number) {
 			items(first: $first, after: $after) {
 				totalCount
 				nodes {
@@ -550,22 +531,22 @@ query RepositoryProjectNextItems($owner: String!, $name: String!, $number: Int!,
 }
 `
 
-const mutationUpdateProjectNext = `
-mutation UpdateProjectNext($id: ID!, $title: String, $description: String, $body: String, $public: Boolean) {
-	updateProjectNext(
-		input: {projectId: $id, title: $title, shortDescription: $description, description: $body, public: $public}
+const mutationUpdateProjectV2 = `
+mutation UpdateProjectV2($id: ID!, $title: String, $description: String, $body: String, $public: Boolean) {
+	updateProjectV2(
+		input: {projectId: $id, title: $title, shortDescription: $description, readme: $body, public: $public}
 	) {
-		projectNext {
+		projectV2 {
 			url
 		}
 	}
 }
 `
 
-const queryRepositoryProjectNextID = `
-query RepositoryProjectNextID($owner: String!, $name: String!, $number: Int!) {
+const queryRepositoryProjectV2ID = `
+query RepositoryProjectV2ID($owner: String!, $name: String!, $number: Int!) {
 	repository(name: $name, owner: $owner) {
-		projectNext(number: $number) {
+		projectV2(number: $number) {
 			id
 			url
 		}
@@ -573,16 +554,37 @@ query RepositoryProjectNextID($owner: String!, $name: String!, $number: Int!) {
 }
 `
 
-const queryRepositoryProjectNextFields = `
-query RepositoryProjectNextFields($owner: String!, $name: String!, $number: Int!, $after: String) {
+const queryRepositoryProjectV2Fields = `
+query RepositoryProjectV2Fields($owner: String!, $name: String!, $number: Int!, $after: String) {
 	repository(owner: $owner, name: $name) {
-		projectNext(number: $number) {
+		projectV2(number: $number) {
 			fields(first: 30, after: $after) {
 				nodes {
-					id
-					name
-					dataType
-					settings
+					...on ProjectV2Field {
+						id
+						name
+						dataType
+					}
+					...on ProjectV2IterationField {
+						id
+						name
+						dataType
+						configuration {
+							iterations {
+								id
+								name: title
+							}
+						}
+					}
+					...on ProjectV2SingleSelectField {
+						id
+						name
+						dataType
+						options {
+							id
+							name
+						}
+					}
 				}
 				pageInfo {
 					hasNextPage
@@ -594,12 +596,12 @@ query RepositoryProjectNextFields($owner: String!, $name: String!, $number: Int!
 }
 `
 
-const mutationUpdateProjectNextItemField = `
-mutation UpdateProjectNextItemField($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
-	updateProjectNextItemField(
+const mutationUpdateProjectV2ItemFieldValue = `
+mutation UpdateProjectV2ItemFieldValue($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+	updateProjectV2ItemFieldValue(
 		input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value}
 	) {
-		projectNextItem {
+		projectV2Item {
 			id
 		}
 	}

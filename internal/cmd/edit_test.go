@@ -172,7 +172,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -183,8 +183,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -206,7 +206,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -217,8 +217,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -235,7 +235,10 @@ func TestEdit(t *testing.T) {
 				},
 				number:    1,
 				addIssues: []int{2, 3},
-				fields:    map[string]string{"status": "todo"},
+				fields: map[string]string{
+					"status":    "todo",
+					"iteration": "iteration 1",
+				},
 			},
 			tty: true,
 			mocks: func() {
@@ -245,7 +248,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -256,8 +259,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -270,14 +273,13 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Title",
 												"name": "Title",
-												"dataType": "TITLE",
-												"settings": "null"
+												"dataType": "TITLE"
 											}
 										],
 										"pageInfo": {
@@ -295,20 +297,49 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Status",
 												"name": "Status",
 												"dataType": "SINGLE_SELECT",
-												"settings": "{\"options\":[{\"id\":\"PNF_Status_Todo\",\"name\":\"Todo\",\"name_html\":\"Todo\"},{\"id\":\"PNF_Status_InProgress\",\"name\":\"In Progress\",\"name_html\":\"In Progress\"},{\"id\":\"PNF_Status_Done\",\"name\":\"Done\",\"name_html\":\"Done\"}]}"
+												"options": [
+													{
+														"id": "PNF_Status_Todo",
+														"name": "Todo"
+													},
+													{
+														"id": "PNF_Status_InProgress",
+														"name": "In Progress"
+													},
+													{
+														"id": "PNF_Status_Done",
+														"name": "Done"
+													}
+												]
 											},
 											{
 												"id": "PNF_Labels",
 												"name": "Labels",
-												"dataType": "LABELS",
-												"settings": "null"
+												"dataType": "LABELS"
+											},
+											{
+												"id": "PNF_Iteration",
+												"name": "Iteration",
+												"dataType": "ITERATION",
+												"configuration": {
+													"iterations": [
+														{
+															"id": "PNF_Iteration_1",
+															"name": "Iteration 1"
+														},
+														{
+															"id": "PNF_Iteration_2",
+															"name": "Iteration 2"
+														}
+													]
+												}
 											}
 										],
 										"pageInfo": {
@@ -338,8 +369,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"addProjectNextItem": {
-								"projectNextItem": {
+							"addProjectV2ItemById": {
+								"item": {
 									"id": "PNI_2"
 								}
 							}
@@ -350,8 +381,20 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNextItemField": {
-								"projectNextItem": {
+							"updateProjectV2ItemFieldValue": {
+								"projectV2Item": {
+									"id": "PNI_1"
+								}
+							}
+						}
+					}`)
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"updateProjectV2ItemFieldValue": {
+								"projectV2Item": {
 									"id": "PNI_1"
 								}
 							}
@@ -375,8 +418,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"addProjectNextItem": {
-								"projectNextItem": {
+							"addProjectV2ItemById": {
+								"item": {
 									"id": "PNI_2"
 								}
 							}
@@ -387,8 +430,20 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNextItemField": {
-								"projectNextItem": {
+							"updateProjectV2ItemFieldValue": {
+								"projectV2Item": {
+									"id": "PNI_1"
+								}
+							}
+						}
+					}`)
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"updateProjectV2ItemFieldValue": {
+								"projectV2Item": {
 									"id": "PNI_1"
 								}
 							}
@@ -415,7 +470,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -426,8 +481,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -439,14 +494,13 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Title",
 												"name": "Title",
-												"dataType": "TITLE",
-												"settings": "null"
+												"dataType": "TITLE"
 											}
 										],
 										"pageInfo": {
@@ -464,20 +518,32 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Status",
 												"name": "Status",
 												"dataType": "SINGLE_SELECT",
-												"settings": "{\"options\":[{\"id\":\"PNF_Status_Todo\",\"name\":\"Todo\",\"name_html\":\"Todo\"},{\"id\":\"PNF_Status_InProgress\",\"name\":\"In Progress\",\"name_html\":\"In Progress\"},{\"id\":\"PNF_Status_Done\",\"name\":\"Done\",\"name_html\":\"Done\"}]}"
+												"options": [
+													{
+														"id": "PNF_Status_Todo",
+														"name": "Todo"
+													},
+													{
+														"id": "PNF_Status_InProgress",
+														"name": "In Progress"
+													},
+													{
+														"id": "PNF_Status_Done",
+														"name": "Done"
+													}
+												]
 											},
 											{
 												"id": "PNF_Labels",
 												"name": "Labels",
-												"dataType": "LABELS",
-												"settings": "null"
+												"dataType": "LABELS"
 											}
 										],
 										"pageInfo": {
@@ -495,14 +561,13 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Cost",
 												"name": "Cost",
-												"dataType": "NUMBER",
-												"settings": "null"
+												"dataType": "NUMBER"
 											}
 										],
 										"pageInfo": {
@@ -531,7 +596,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -542,8 +607,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -555,14 +620,27 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Status",
 												"name": "Status",
 												"dataType": "SINGLE_SELECT",
-												"settings": "{\"options\":[{\"id\":\"PNF_Status_Todo\",\"name\":\"Todo\",\"name_html\":\"Todo\"},{\"id\":\"PNF_Status_InProgress\",\"name\":\"In Progress\",\"name_html\":\"In Progress\"},{\"id\":\"PNF_Status_Done\",\"name\":\"Done\",\"name_html\":\"Done\"}]}"
+												"options": [
+													{
+														"id": "PNF_Status_Todo",
+														"name": "Todo"
+													},
+													{
+														"id": "PNF_Status_InProgress",
+														"name": "In Progress"
+													},
+													{
+														"id": "PNF_Status_Done",
+														"name": "Done"
+													}
+												]
 											}
 										],
 										"pageInfo": {
@@ -609,7 +687,7 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"id": "PN_1"
 								}
 							}
@@ -620,8 +698,8 @@ func TestEdit(t *testing.T) {
 					Reply(200).
 					JSON(`{
 						"data": {
-							"updateProjectNext": {
-								"projectNext": {
+							"updateProjectV2": {
+								"projectV2": {
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -634,14 +712,13 @@ func TestEdit(t *testing.T) {
 					JSON(`{
 						"data": {
 							"repository": {
-								"projectNext": {
+								"projectV2": {
 									"fields": {
 										"nodes": [
 											{
 												"id": "PNF_Cost",
 												"name": "Cost",
-												"dataType": "NUMBER",
-												"settings": "null"
+												"dataType": "NUMBER"
 											}
 										],
 										"pageInfo": {
@@ -653,47 +730,8 @@ func TestEdit(t *testing.T) {
 							}
 						}
 					}`)
-				// addIssue 1
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"repository": {
-								"issueOrPullRequest": {
-									"id": "I_2"
-								}
-							}
-						}
-					}`)
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"addProjectNextItem": {
-								"projectNextItem": {
-									"id": "PNI_2"
-								}
-							}
-						}
-					}`)
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"updateProjectNextItemField": null
-						},
-						"errors": [
-							{
-								"type": "UNPROCESSABLE",
-								"message": "Column value must be a valid value for number column"
-							}
-						]
-					}`)
 			},
-			wantErr: `failed to update field "Cost": GraphQL: Column value must be a valid value for number column`,
+			wantErr: `invalid number for field "Cost": Huge`,
 		},
 	}
 

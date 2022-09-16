@@ -56,22 +56,22 @@ func view(opts *viewOptions) (err error) {
 		"owner":        opts.Repo.Owner(),
 		"name":         opts.Repo.Name(),
 		"number":       opts.number,
-		"limit":        opts.limit,
+		"first":        opts.limit,
 		"includeItems": opts.items,
 	}
 
 	var data models.RepositoryProject
-	err = client.Do(queryRepositoryProjectNext+fragmentProjectNextItems, vars, &data)
+	err = client.Do(queryRepositoryProjectV2+fragmentProjectV2Items, vars, &data)
 	if err != nil {
 		return
 	}
 
-	project := data.Repository.ProjectNext
+	project := data.Repository.ProjectV2
 
 	if opts.items {
 		items := make([]models.ProjectItem, 0, opts.limit)
 		for {
-			for _, item := range data.Repository.ProjectNext.Items.Nodes {
+			for _, item := range data.Repository.ProjectV2.Items.Nodes {
 				if equalItemState(item.Content.State, opts.state) {
 					items = append(items, item)
 				}
@@ -79,7 +79,7 @@ func view(opts *viewOptions) (err error) {
 
 			if len(items) < opts.limit && project.Items.PageInfo.HasNextPage {
 				vars["after"] = project.Items.PageInfo.EndCursor
-				err = client.Do(queryRepositoryProjectNextMoreItems+fragmentProjectNextItems, vars, &data)
+				err = client.Do(queryRepositoryProjectV2MoreItems+fragmentProjectV2Items, vars, &data)
 				if err != nil {
 					return
 				}
@@ -99,15 +99,15 @@ func view(opts *viewOptions) (err error) {
 	return t.Project(project)
 }
 
-const queryRepositoryProjectNext = `
-query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $after: String, $includeItems: Boolean = false) {
+const queryRepositoryProjectV2 = `
+query RepositoryProjectV2($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String, $includeItems: Boolean = false) {
 	repository(name: $name, owner: $owner) {
-		projectNext(number: $number) {
+		projectV2(number: $number) {
 			id
 			number
 			title
 			description: shortDescription
-			body: description
+			body: readme
 			creator {
 				login
 			}
@@ -120,35 +120,37 @@ query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $lim
 }
 `
 
-const queryRepositoryProjectNextMoreItems = `
-query RepositoryProjectNext($owner: String!, $name: String!, $number: Int!, $limit: Int!, $after: String) {
+const queryRepositoryProjectV2MoreItems = `
+query RepositoryProjectV2($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String) {
 	repository(name: $name, owner: $owner) {
-		projectNext(number: $number) {
+		projectV2(number: $number) {
 			...items
 		}
 	}
 }
 `
 
-const fragmentProjectNextItems = `
-fragment items on ProjectNext {
-	items(first: $limit, after: $after) {
+const fragmentProjectV2Items = `
+fragment items on ProjectV2 {
+	items(first: $first, after: $after) {
 		totalCount
 		nodes {
 			id
-			title
 			type
 			content {
 				... on DraftIssue {
+					title
 					createdAt
 				}
 				... on Issue {
 					number
+					title
 					createdAt
 					state
 				}
 				... on PullRequest {
 					number
+					title
 					createdAt
 					state
 				}
