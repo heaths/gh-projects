@@ -21,7 +21,6 @@ type projectItemNode struct {
 }
 type ProjectItem struct {
 	ID      string
-	Title   string
 	Type    string
 	Content projectItemContent
 }
@@ -29,6 +28,7 @@ type ProjectItem struct {
 type projectItemContent struct {
 	ID        string
 	Number    int
+	Title     string
 	CreatedAt *time.Time
 	State     string
 }
@@ -42,11 +42,11 @@ type RepositoryProject struct {
 }
 
 type projects struct {
-	ProjectsNext ProjectsNode
+	ProjectsV2 ProjectsNode
 }
 
 type ProjectNode struct {
-	ProjectNext Project
+	ProjectV2 Project
 }
 
 type ProjectsNode struct {
