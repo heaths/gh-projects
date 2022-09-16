@@ -8,8 +8,8 @@ import (
 	tt "text/template"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/go-gh/pkg/text"
 	"github.com/heaths/gh-projects/internal/models"
-	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/heaths/go-console"
 )
 
@@ -42,7 +42,7 @@ func New(c console.Console) (*Template, error) {
 			// Return colored empty string to use consistent column width.
 			return cs.Black("")
 		},
-		"pluralize": utils.Pluralize,
+		"pluralize": text.Pluralize,
 		"state": func(s string) string {
 			switch s {
 			case "CLOSED":
