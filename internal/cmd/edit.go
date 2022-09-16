@@ -8,8 +8,8 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
+	"github.com/cli/go-gh/pkg/text"
 	"github.com/heaths/gh-projects/internal/models"
-	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
@@ -190,7 +190,7 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	if len(opts.addIssues) > 0 {
-		count := utils.Pluralize(len(opts.addIssues), "issue")
+		count := text.Pluralize(len(opts.addIssues), "issue")
 
 		opts.Console.StartProgress(fmt.Sprintf("Adding %s to %s", count, projectURL))
 		err = addIssues(client, projectID, opts)
@@ -206,7 +206,7 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	if len(opts.removeIssues) > 0 {
-		count := utils.Pluralize(len(opts.removeIssues), "issue")
+		count := text.Pluralize(len(opts.removeIssues), "issue")
 
 		opts.Console.StartProgress(fmt.Sprintf("Removing %s %s", count, projectURL))
 		err = removeItems(client, projectID, opts)
