@@ -1,11 +1,23 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
 	"github.com/heaths/gh-projects/internal/models"
 	"github.com/heaths/gh-projects/internal/template"
 	"github.com/spf13/cobra"
+)
+
+const (
+	orderAsc  = "asc"
+	orderDesc = "desc"
+
+	sortTitle   = "title"
+	sortNumber  = "number"
+	sortCreated = "created"
+	sortUpdated = "updated"
 )
 
 func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
@@ -20,8 +32,11 @@ func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVar(&opts.all, "all", false, "List all projects for the organization or user")
 	IntRangeVarP(cmd, &opts.limit, "limit", "L", 30, 1, 100, "Number of projects to return")
-	cmd.Flags().StringVarP(&opts.search, "search", "S", "", "Search projects.")
+	StringEnumVarP(cmd, &opts.order, "order", "", orderDesc, []string{orderAsc, orderDesc}, "Order of results returned, ignored unless '--sort' flag is specified")
+	cmd.Flags().StringVarP(&opts.search, "search", "S", "", "Search projects")
+	StringEnumVarP(cmd, &opts.sort, "sort", "", "", []string{sortTitle, sortNumber, sortCreated, sortUpdated}, "Sort fetched results")
 
 	return cmd
 }
@@ -29,8 +44,11 @@ func NewListCmd(globalOpts *GlobalOptions) *cobra.Command {
 type listOptions struct {
 	GlobalOptions
 
+	all    bool
 	limit  int
+	order  string
 	search string
+	sort   string
 }
 
 func list(opts *listOptions) (err error) {
@@ -52,12 +70,24 @@ func list(opts *listOptions) (err error) {
 		vars["search"] = opts.search
 	}
 
+	if opts.sort != "" {
+		vars["orderBy"] = map[string]interface{}{
+			"field":     projectV2Order(opts.sort),
+			"direction": strings.ToUpper(opts.order),
+		}
+	}
+
 	var data models.RepositoryProjects
 	var projects []models.Project
 	var i, totalCount int
 
+	query := queryRepositoryProjectsNext
+	if opts.all {
+		query = queryRepositoryOwnerProjectsNext
+	}
+
 	for {
-		err = client.Do(queryRepositoryProjectsNext, vars, &data)
+		err = client.Do(query, vars, &data)
 		if err != nil {
 			return
 		}
@@ -93,9 +123,9 @@ func list(opts *listOptions) (err error) {
 }
 
 const queryRepositoryProjectsNext = `
-query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $after: String, $search: String) {
+query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
 	repository(owner: $owner, name: $name) {
-		projectsV2(first: $first, after: $after, query: $search) {
+		projectsV2(first: $first, after: $after, query: $search, orderBy: $orderBy) {
 			totalCount
 			nodes {
 				id
@@ -113,3 +143,38 @@ query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $aft
 	}
 }
 `
+
+const queryRepositoryOwnerProjectsNext = `
+query RepositoryOwnerProjectsNext($owner: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
+	repository: repositoryOwner(login: $owner) {
+		...on ProjectV2Owner {
+			projectsV2(first: $first, after: $after, query: $search, orderBy: $orderBy) {
+				totalCount
+				nodes {
+					id
+					number
+					title
+					description: shortDescription
+					public
+					createdAt
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
+			}
+		}
+	}
+}
+`
+
+func projectV2Order(sort string) string {
+	switch sort {
+	case "created":
+		return "CREATED_AT"
+	case "updated":
+		return "UPDATED_AT"
+	default:
+		return strings.ToUpper(sort)
+	}
+}
