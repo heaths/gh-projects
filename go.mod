@@ -6,7 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/cli/go-gh v0.1.1-0.20220914174438-a7df5eeeb66c
-	github.com/heaths/go-console v0.6.1
+	github.com/heaths/go-console v0.7.0
 	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.2
