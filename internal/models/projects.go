@@ -46,7 +46,16 @@ type projects struct {
 }
 
 type ProjectNode struct {
-	ProjectV2 Project
+	Type      string
+	ProjectV2 *Project
+
+	// A bit of a hack to get an owned repo in a single query with a project V2.
+	// See queryRepositoryOwnerProjectV2ID
+	Repository *repository
+}
+
+type repository struct {
+	ID string
 }
 
 type ProjectsNode struct {

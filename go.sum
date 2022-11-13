@@ -29,6 +29,8 @@ github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 h1:2VTzZjLZBgl62/EtslC
 github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542/go.mod h1:Ow0tF8D4Kplbc8s8sSb3V2oUCygFHVp8gC3Dn6U4MNI=
 github.com/heaths/go-console v0.6.1 h1:vvc6VUwrExZA0RTwIv7LvQV5d3u3ROKyec5t2BC0pWk=
 github.com/heaths/go-console v0.6.1/go.mod h1:UTjPlyATxavZ3/z+8myE9XBbe3K66hNPCeI36vj9V70=
+github.com/heaths/go-console v0.7.0 h1:lC9MNwW+qwGd2gpUlTjMvkKcvpmtATMv1lmmN1i2kIE=
+github.com/heaths/go-console v0.7.0/go.mod h1:UTjPlyATxavZ3/z+8myE9XBbe3K66hNPCeI36vj9V70=
 github.com/henvic/httpretty v0.0.6 h1:JdzGzKZBajBfnvlMALXXMVQWxWMF/ofTy8C3/OSUTxs=
 github.com/henvic/httpretty v0.0.6/go.mod h1:X38wLjWXHkXT7r2+uK8LjCMne9rsuNaBLJ+5cU2/Pmo=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=

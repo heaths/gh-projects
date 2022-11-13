@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
 	"github.com/cli/go-gh/pkg/api"
 	"github.com/cli/go-gh/pkg/text"
 	"github.com/heaths/gh-projects/internal/models"
+	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 )
@@ -153,14 +155,13 @@ func edit(opts *editOptions) (err error) {
 		"number": opts.number,
 	}
 
-	var projectData models.RepositoryProject
-	err = client.Do(queryRepositoryProjectV2ID, vars, &projectData)
+	project, err := getProject(client, vars, opts)
 	if err != nil {
 		return
 	}
 
-	projectID := projectData.Repository.ProjectV2.ID
-	projectURL := projectData.Repository.ProjectV2.URL
+	projectID := project.ID
+	projectURL := project.URL
 
 	vars["id"] = projectID
 	if opts.title != "" {
@@ -226,6 +227,49 @@ func edit(opts *editOptions) (err error) {
 	}
 
 	return
+}
+
+func getProject(client api.GQLClient, vars map[string]interface{}, opts *editOptions) (*models.Project, error) {
+	var projectData models.RepositoryProject
+	err := client.Do(queryRepositoryProjectV2ID, vars, &projectData)
+	if err != nil {
+		return nil, err
+	}
+
+	if projectData.Repository.ProjectV2 != nil {
+		return projectData.Repository.ProjectV2, nil
+	}
+
+	// Link the project if defined by an organization or user.
+	err = client.Do(queryRepositoryOwnerProjectV2ID, vars, &projectData)
+	if err != nil {
+		return nil, err
+	}
+
+	if projectData.Repository.ProjectV2 != nil {
+		repo := fmt.Sprintf("%s/%s", vars["owner"], vars["name"])
+		linkVars := map[string]interface{}{
+			"projectId":    projectData.Repository.ProjectV2.ID,
+			"repositoryId": projectData.Repository.Repository.ID,
+		}
+		var ignored interface{}
+
+		// Make sure progress shows for at least a short time or it may raise doubts.
+		opts.Console.StartProgress(
+			fmt.Sprintf("Linking project #%d to %q", vars["number"], repo),
+			console.WithMinimum(time.Second),
+		)
+		err = client.Do(mutationLinkProjectV2ToRepository, linkVars, &ignored)
+		opts.Console.StopProgress()
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to link project #%d to %q: %v", vars["number"], repo, err)
+		}
+
+		return projectData.Repository.ProjectV2, nil
+	}
+
+	return nil, fmt.Errorf("project #%d not found for %s %q", vars["number"], projectData.Repository.Type, vars["owner"])
 }
 
 func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err error) {
@@ -549,6 +593,35 @@ query RepositoryProjectV2ID($owner: String!, $name: String!, $number: Int!) {
 		projectV2(number: $number) {
 			id
 			url
+		}
+	}
+}
+`
+
+const queryRepositoryOwnerProjectV2ID = `
+query RepositoryOwnerProjectV2ID($owner: String!, $name: String!, $number: Int!) {
+	repository: repositoryOwner(login: $owner) {
+		repository(name: $name) {
+			id
+		}
+		type: __typename
+		... on ProjectV2Owner {
+			projectV2(number: $number) {
+				id
+				url
+			}
+		}
+	}
+}
+`
+
+const mutationLinkProjectV2ToRepository = `
+mutation LinkProjectV2ToRepository($projectId: ID!, $repositoryId: ID!) {
+	linkProjectV2ToRepository(
+		input: {projectId: $projectId, repositoryId: $repositoryId}
+	) {
+		repository {
+			id
 		}
 	}
 }

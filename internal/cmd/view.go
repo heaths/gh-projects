@@ -96,7 +96,7 @@ func view(opts *viewOptions) (err error) {
 		return
 	}
 
-	return t.Project(project)
+	return t.Project(*project)
 }
 
 const queryRepositoryProjectV2 = `
