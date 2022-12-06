@@ -263,7 +263,7 @@ func getProject(client api.GQLClient, vars map[string]interface{}, opts *editOpt
 		opts.Console.StopProgress()
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to link project #%d to %q: %v", vars["number"], repo, err)
+			return nil, fmt.Errorf("failed to link project #%d to %q: %w", vars["number"], repo, err)
 		}
 
 		return projectData.Repository.ProjectV2, nil
@@ -428,7 +428,7 @@ func updateFields(client api.GQLClient, projectID, itemID string, fields map[str
 		var data interface{}
 		err := client.Do(mutationUpdateProjectV2ItemFieldValue, vars, &data)
 		if err != nil {
-			return fmt.Errorf("failed to update field %q: %v", name, err)
+			return fmt.Errorf("failed to update field %q: %w", name, err)
 		}
 	}
 
