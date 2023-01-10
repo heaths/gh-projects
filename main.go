@@ -1,17 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/pkg/api"
 	"github.com/cli/go-gh/pkg/auth"
 	"github.com/cli/go-gh/pkg/repository"
 	"github.com/heaths/gh-projects/internal/cmd"
 	"github.com/heaths/gh-projects/internal/logger"
 	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
+)
+
+var (
+	errNotAuthenticated   = errors.New("use `gh auth login -s project` to authenticate with required scopes")
+	errInsufficientScopes = errors.New("your token has not been granted the required scopes; use `gh auth refresh -s project` to authenticate with required scopes")
 )
 
 func main() {
@@ -52,7 +58,7 @@ func main() {
 			}
 			token, _ := auth.TokenForHost(host)
 			if token == "" {
-				return fmt.Errorf("use `gh auth login -s project` to authenticate with required scopes")
+				return errNotAuthenticated
 			}
 
 			// If the repo is still unassigned, try to use the current repository.
@@ -66,7 +72,8 @@ func main() {
 			opts.Repo = repo
 			return
 		},
-		SilenceUsage: true,
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&repoFlag, "repo", "R", "", "Select another repository to use using the [HOST/]OWNER/REPO format.")
@@ -77,6 +84,17 @@ func main() {
 	rootCmd.AddCommand(cmd.NewViewCmd(opts))
 
 	if err := rootCmd.Execute(); err != nil {
+		if _err, ok := err.(api.GQLError); ok {
+			for _, _e := range _err.Errors {
+				if _e.Type == "INSUFFICIENT_SCOPES" {
+					err = errInsufficientScopes
+					break
+				}
+			}
+		}
+
+		// cspell:ignore Errln
+		rootCmd.PrintErrln("Error:", err.Error())
 		os.Exit(1)
 	}
 }
