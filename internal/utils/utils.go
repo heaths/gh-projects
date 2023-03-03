@@ -2,6 +2,8 @@ package utils
 
 import (
 	"strings"
+
+	"github.com/cli/go-gh/pkg/api"
 )
 
 func Ptr[T any](v T) *T {
@@ -16,4 +18,15 @@ func StringSliceContains(value string, values []string) bool {
 	}
 
 	return false
+}
+
+func AsGQLError(err error, code string) error {
+	if err, ok := err.(api.GQLError); ok {
+		for _, e := range err.Errors {
+			if e.Type == code {
+				return err
+			}
+		}
+	}
+	return nil
 }

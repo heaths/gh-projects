@@ -11,6 +11,7 @@ import (
 	"github.com/cli/go-gh/pkg/api"
 	"github.com/cli/go-gh/pkg/text"
 	"github.com/heaths/gh-projects/internal/models"
+	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -164,20 +165,26 @@ func edit(opts *editOptions) (err error) {
 	projectURL := project.URL
 
 	vars["id"] = projectID
+	requiresUpdate := false
+
 	if opts.title != "" {
 		vars["title"] = opts.title
+		requiresUpdate = true
 	}
 	if opts.description != nil {
 		vars["description"] = opts.description
+		requiresUpdate = true
 	}
 	if opts.body != nil {
 		vars["body"] = opts.body
+		requiresUpdate = true
 	}
 	if opts.public != nil {
 		vars["public"] = opts.public
+		requiresUpdate = true
 	}
 
-	if len(vars) > 1 {
+	if requiresUpdate {
 		var updatedProjectData struct {
 			UpdateProjectV2 models.ProjectNode
 		}
@@ -232,7 +239,7 @@ func edit(opts *editOptions) (err error) {
 func getProject(client api.GQLClient, vars map[string]interface{}, opts *editOptions) (*models.Project, error) {
 	var projectData models.RepositoryProject
 	err := client.Do(queryRepositoryProjectV2ID, vars, &projectData)
-	if err != nil {
+	if err != nil && utils.AsGQLError(err, "NOT_FOUND") == nil {
 		return nil, err
 	}
 
