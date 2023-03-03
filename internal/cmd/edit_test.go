@@ -173,7 +173,8 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
+									"id": "PN_1",
+									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
 						}
@@ -207,7 +208,8 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
+									"id": "PN_1",
+									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
 						}
@@ -249,18 +251,7 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
-								}
-							}
-						}
-					}`)
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"updateProjectV2": {
-								"projectV2": {
+									"id": "PN_1",
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -471,7 +462,8 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
+									"id": "PN_1",
+									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
 						}
@@ -597,18 +589,7 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
-								}
-							}
-						}
-					}`)
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"updateProjectV2": {
-								"projectV2": {
+									"id": "PN_1",
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -688,18 +669,7 @@ func TestEdit(t *testing.T) {
 						"data": {
 							"repository": {
 								"projectV2": {
-									"id": "PN_1"
-								}
-							}
-						}
-					}`)
-				gock.New("https://api.github.com").
-					Post("/graphql").
-					Reply(200).
-					JSON(`{
-						"data": {
-							"updateProjectV2": {
-								"projectV2": {
+									"id": "PN_1",
 									"url": "https://github.com/users/heaths/projects/1"
 								}
 							}
@@ -732,6 +702,174 @@ func TestEdit(t *testing.T) {
 					}`)
 			},
 			wantErr: `invalid number for field "Cost": Huge`,
+		},
+		{
+			name: "links project",
+			opts: &editOptions{
+				number:    1,
+				addIssues: []int{2},
+			},
+			mocks: func() {
+				// Attempt to get linked project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"repository": {
+								"projectV2": null
+							}
+						},
+						"errors": [
+							{
+								"type": "NOT_FOUND",
+								"message": "Could not resolve to a ProjectV2 with the number 1."
+							}
+						]
+					}`)
+				// Get user project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"repository": {
+								"repository": {
+									"id": "R_repo"
+								},
+								"type": "User",
+								"projectV2": {
+									"id": "PVT_1",
+									"url": "https://github.com/users/heaths/projects/1"
+								}
+							}
+						}
+					}`)
+				// Link user project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"repository": {
+								"id": "R_repo"
+							}
+						}
+					}`)
+				// Add issue 2
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"repository": {
+								"issueOrPullRequest": {
+									"id": "I_2"
+								}
+							}
+						}
+					}`)
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+						"data": {
+							"addProjectV2ItemById": {
+								"item": {
+									"id": "PNI_2"
+								}
+							}
+						}
+					}`)
+			},
+		},
+		{
+			name: "links project (tty)",
+			opts: &editOptions{
+				GlobalOptions: GlobalOptions{
+					Verbose: true,
+				},
+				number:    1,
+				addIssues: []int{2},
+			},
+			tty: true,
+			mocks: func() {
+				// Attempt to get linked project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+							"data": {
+								"repository": {
+									"projectV2": null
+								}
+							},
+							"errors": [
+								{
+									"type": "NOT_FOUND",
+									"message": "Could not resolve to a ProjectV2 with the number 1."
+								}
+							]
+						}`)
+				// Get user project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+							"data": {
+								"repository": {
+									"repository": {
+										"id": "R_repo"
+									},
+									"type": "User",
+									"projectV2": {
+										"id": "PVT_1",
+										"url": "https://github.com/users/heaths/projects/1"
+									}
+								}
+							}
+						}`)
+				// Link user project.
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+							"data": {
+								"repository": {
+									"id": "R_repo"
+								}
+							}
+						}`)
+				// Add issue 2
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+							"data": {
+								"repository": {
+									"issueOrPullRequest": {
+										"id": "I_2"
+									}
+								}
+							}
+						}`)
+				gock.New("https://api.github.com").
+					Post("/graphql").
+					Reply(200).
+					JSON(`{
+							"data": {
+								"addProjectV2ItemById": {
+									"item": {
+										"id": "PNI_2"
+									}
+								}
+							}
+						}`)
+			},
+			wantStdout: heredoc.Doc(`
+				Added 1 issue
+				https://github.com/users/heaths/projects/1
+			`),
 		},
 	}
 

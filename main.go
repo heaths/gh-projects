@@ -6,11 +6,11 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/cli/go-gh"
-	"github.com/cli/go-gh/pkg/api"
 	"github.com/cli/go-gh/pkg/auth"
 	"github.com/cli/go-gh/pkg/repository"
 	"github.com/heaths/gh-projects/internal/cmd"
 	"github.com/heaths/gh-projects/internal/logger"
+	"github.com/heaths/gh-projects/internal/utils"
 	"github.com/heaths/go-console"
 	"github.com/spf13/cobra"
 )
@@ -84,13 +84,8 @@ func main() {
 	rootCmd.AddCommand(cmd.NewViewCmd(opts))
 
 	if err := rootCmd.Execute(); err != nil {
-		if _err, ok := err.(api.GQLError); ok {
-			for _, _e := range _err.Errors {
-				if _e.Type == "INSUFFICIENT_SCOPES" {
-					err = errInsufficientScopes
-					break
-				}
-			}
+		if utils.AsGQLError(err, "INSUFFICIENT_SCOPES") != nil {
+			err = errInsufficientScopes
 		}
 
 		// cspell:ignore Errln
