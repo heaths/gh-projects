@@ -25,6 +25,14 @@ gh extension upgrade --all
 
 ## Commands
 
+### clone
+
+Clone a project:
+
+```bash
+gh projects clone 1 --title "A new project title"
+```
+
 ### edit
 
 Edit a project:
