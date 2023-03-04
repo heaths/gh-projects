@@ -51,7 +51,9 @@ type cloneOptions struct {
 
 func clone(opts *cloneOptions) (err error) {
 	clientOpts := &api.ClientOptions{
-		Log: opts.Log,
+		AuthToken: opts.authToken,
+		Host:      opts.host,
+		Log:       opts.Log,
 	}
 	client, err := gh.GQLClient(clientOpts)
 	if err != nil {
