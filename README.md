@@ -31,6 +31,7 @@ Clone a project:
 
 ```bash
 gh projects clone 1 --title "A new project title"
+gh projects clone 1 --t "A private clone" --private -d "Private feature work"
 ```
 
 ### edit
