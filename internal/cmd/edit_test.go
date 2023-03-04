@@ -35,18 +35,22 @@ func TestNewEditCmd(t *testing.T) {
 			name: "only project number",
 			args: []string{"1"},
 			wantOpts: &editOptions{
-				number: 1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 			},
 		},
 		{
 			name: "basic parameters",
 			args: []string{"1", "-t", "title", "-d", "description", "-b", "body", "--public"},
 			wantOpts: &editOptions{
-				number:      1,
-				title:       "title",
-				description: utils.Ptr("description"),
-				body:        utils.Ptr("body"),
-				public:      utils.Ptr(true),
+				projectOptions: projectOptions{
+					number:      1,
+					title:       "title",
+					description: utils.Ptr("description"),
+					body:        utils.Ptr("body"),
+					public:      utils.Ptr(true),
+				},
 			},
 		},
 		{
@@ -54,8 +58,10 @@ func TestNewEditCmd(t *testing.T) {
 			args:  []string{"1", "-b", "-"},
 			stdin: bytes.NewBufferString("stdin"),
 			wantOpts: &editOptions{
-				number: 1,
-				body:   utils.Ptr("stdin"),
+				projectOptions: projectOptions{
+					number: 1,
+					body:   utils.Ptr("stdin"),
+				},
 			},
 		},
 		{
@@ -67,7 +73,9 @@ func TestNewEditCmd(t *testing.T) {
 			name: "issue number with hash prefix",
 			args: []string{"1", "--add-issue", "#2"},
 			wantOpts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 			},
 		},
@@ -75,7 +83,9 @@ func TestNewEditCmd(t *testing.T) {
 			name: "issue number",
 			args: []string{"1", "--remove-issue", "2"},
 			wantOpts: &editOptions{
-				number:       1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				removeIssues: []int{2},
 			},
 		},
@@ -83,7 +93,9 @@ func TestNewEditCmd(t *testing.T) {
 			name: "single field",
 			args: []string{"1", "--add-issue", "2", "-f", "Status=Done"},
 			wantOpts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 				fields: map[string]string{
 					"Status": "Done",
@@ -94,7 +106,9 @@ func TestNewEditCmd(t *testing.T) {
 			name: "multiple field",
 			args: []string{"1", "--add-issue", "2", "-f", "Status=Done,Iteration=Iteration 1", "-f", "Cost=1"},
 			wantOpts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 				fields: map[string]string{
 					"Status":    "Done",
@@ -162,8 +176,10 @@ func TestEdit(t *testing.T) {
 		{
 			name: "change title",
 			opts: &editOptions{
-				number: 1,
-				title:  "new title",
+				projectOptions: projectOptions{
+					number: 1,
+					title:  "new title",
+				},
 			},
 			mocks: func() {
 				gock.New("https://api.github.com").
@@ -196,8 +212,10 @@ func TestEdit(t *testing.T) {
 		{
 			name: "change title (tty)",
 			opts: &editOptions{
-				number: 1,
-				title:  "new title",
+				projectOptions: projectOptions{
+					number: 1,
+					title:  "new title",
+				},
 			},
 			tty: true,
 			mocks: func() {
@@ -232,10 +250,12 @@ func TestEdit(t *testing.T) {
 		{
 			name: "add issues with fields (tty)",
 			opts: &editOptions{
-				GlobalOptions: GlobalOptions{
-					Verbose: true,
+				projectOptions: projectOptions{
+					GlobalOptions: GlobalOptions{
+						Verbose: true,
+					},
+					number: 1,
 				},
-				number:    1,
 				addIssues: []int{2, 3},
 				fields: map[string]string{
 					"status":    "todo",
@@ -449,7 +469,9 @@ func TestEdit(t *testing.T) {
 		{
 			name: "undefined field",
 			opts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 				fields:    map[string]string{"Undefined": "true"},
 			},
@@ -577,7 +599,9 @@ func TestEdit(t *testing.T) {
 		{
 			name: "issue not found",
 			opts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{99},
 				fields:    map[string]string{"status": "todo"},
 			},
@@ -656,7 +680,9 @@ func TestEdit(t *testing.T) {
 		{
 			name: "invalid field value",
 			opts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 				fields:    map[string]string{"Cost": "Huge"},
 			},
@@ -706,7 +732,9 @@ func TestEdit(t *testing.T) {
 		{
 			name: "links project",
 			opts: &editOptions{
-				number:    1,
+				projectOptions: projectOptions{
+					number: 1,
+				},
 				addIssues: []int{2},
 			},
 			mocks: func() {
@@ -786,10 +814,12 @@ func TestEdit(t *testing.T) {
 		{
 			name: "links project (tty)",
 			opts: &editOptions{
-				GlobalOptions: GlobalOptions{
-					Verbose: true,
+				projectOptions: projectOptions{
+					GlobalOptions: GlobalOptions{
+						Verbose: true,
+					},
+					number: 1,
 				},
-				number:    1,
 				addIssues: []int{2},
 			},
 			tty: true,
