@@ -596,6 +596,9 @@ mutation UpdateProjectV2($id: ID!, $title: String, $description: String, $body: 
 
 const queryRepositoryProjectV2ID = `
 query RepositoryProjectV2ID($owner: String!, $name: String!, $number: Int!) {
+	viewer {
+		id
+	}
 	repository(name: $name, owner: $owner) {
 		projectV2(number: $number) {
 			id

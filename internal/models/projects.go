@@ -38,6 +38,9 @@ type RepositoryProjects struct {
 }
 
 type RepositoryProject struct {
+	Viewer struct {
+		ID string
+	}
 	Repository ProjectNode
 }
 

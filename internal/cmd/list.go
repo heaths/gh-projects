@@ -81,9 +81,9 @@ func list(opts *listOptions) (err error) {
 	var projects []models.Project
 	var i, totalCount int
 
-	query := queryRepositoryProjectsNext
+	query := queryRepositoryProjectsV2
 	if opts.all {
-		query = queryRepositoryOwnerProjectsNext
+		query = queryRepositoryOwnerProjectsV2
 	}
 
 	for {
@@ -122,8 +122,8 @@ func list(opts *listOptions) (err error) {
 	return t.Projects(projects, totalCount)
 }
 
-const queryRepositoryProjectsNext = `
-query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
+const queryRepositoryProjectsV2 = `
+query RepositoryProjectsV2($owner: String!, $name: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
 	repository(owner: $owner, name: $name) {
 		projectsV2(first: $first, after: $after, query: $search, orderBy: $orderBy) {
 			totalCount
@@ -144,8 +144,8 @@ query RepositoryProjectsNext($owner: String!, $name: String!, $first: Int!, $aft
 }
 `
 
-const queryRepositoryOwnerProjectsNext = `
-query RepositoryOwnerProjectsNext($owner: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
+const queryRepositoryOwnerProjectsV2 = `
+query RepositoryOwnerProjectsV2($owner: String!, $first: Int!, $after: String, $search: String, $orderBy: ProjectV2Order) {
 	repository: repositoryOwner(login: $owner) {
 		...on ProjectV2Owner {
 			projectsV2(first: $first, after: $after, query: $search, orderBy: $orderBy) {
