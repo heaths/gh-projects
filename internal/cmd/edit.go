@@ -122,14 +122,17 @@ func NewEditCmd(globalOpts *GlobalOptions, runFunc func(*editOptions) error) *co
 	return cmd
 }
 
-type editOptions struct {
+type projectOptions struct {
 	GlobalOptions
-
 	number      int
 	title       string
 	description *string
 	body        *string
 	public      *bool
+}
+
+type editOptions struct {
+	projectOptions
 
 	addIssues    []int
 	removeIssues []int
@@ -164,37 +167,9 @@ func edit(opts *editOptions) (err error) {
 	projectID := project.ID
 	projectURL := project.URL
 
-	vars["id"] = projectID
-	requiresUpdate := false
-
-	if opts.title != "" {
-		vars["title"] = opts.title
-		requiresUpdate = true
-	}
-	if opts.description != nil {
-		vars["description"] = opts.description
-		requiresUpdate = true
-	}
-	if opts.body != nil {
-		vars["body"] = opts.body
-		requiresUpdate = true
-	}
-	if opts.public != nil {
-		vars["public"] = opts.public
-		requiresUpdate = true
-	}
-
-	if requiresUpdate {
-		var updatedProjectData struct {
-			UpdateProjectV2 models.ProjectNode
-		}
-		err = client.Do(mutationUpdateProjectV2, vars, &updatedProjectData)
-		if err != nil {
-			return
-		}
-
-		// Shouldn't change, but just to assert mocks are returning the right data.
-		projectURL = updatedProjectData.UpdateProjectV2.ProjectV2.URL
+	err = editProject(client, projectID, opts.title != "", &opts.projectOptions)
+	if err != nil {
+		return
 	}
 
 	if len(opts.addIssues) > 0 {
@@ -259,14 +234,13 @@ func getProject(client api.GQLClient, vars map[string]interface{}, opts *editOpt
 			"projectId":    projectData.Repository.ProjectV2.ID,
 			"repositoryId": projectData.Repository.Repository.ID,
 		}
-		var ignored interface{}
 
 		// Make sure progress shows for at least a short time or it may raise doubts.
 		opts.Console.StartProgress(
 			fmt.Sprintf("Linking project #%d to %q", vars["number"], repo),
 			console.WithMinimum(time.Second),
 		)
-		err = client.Do(mutationLinkProjectV2ToRepository, linkVars, &ignored)
+		err = client.Do(mutationLinkProjectV2ToRepository, linkVars, nil)
 		opts.Console.StopProgress()
 
 		if err != nil {
@@ -277,6 +251,38 @@ func getProject(client api.GQLClient, vars map[string]interface{}, opts *editOpt
 	}
 
 	return nil, fmt.Errorf("project #%d not found for %s %q", vars["number"], projectData.Repository.Type, vars["owner"])
+}
+
+func editProject(client api.GQLClient, projectID string, requiresUpdate bool, opts *projectOptions) (err error) {
+	vars := map[string]interface{}{
+		"id": projectID,
+	}
+
+	if opts.title != "" {
+		vars["title"] = opts.title
+		// Pass requiredUpdate: true to force an update for the title.
+	}
+	if opts.description != nil {
+		vars["description"] = *opts.description
+		requiresUpdate = true
+	}
+	if opts.body != nil {
+		vars["body"] = *opts.body
+		requiresUpdate = true
+	}
+	if opts.public != nil {
+		vars["public"] = *opts.public
+		requiresUpdate = true
+	}
+
+	if requiresUpdate {
+		err = client.Do(mutationUpdateProjectV2, vars, nil)
+		if err != nil {
+			return
+		}
+	}
+
+	return
 }
 
 func addIssues(client api.GQLClient, projectID string, opts *editOptions) (err error) {
@@ -603,6 +609,7 @@ query RepositoryProjectV2ID($owner: String!, $name: String!, $number: Int!) {
 		projectV2(number: $number) {
 			id
 			url
+			public
 		}
 	}
 }
