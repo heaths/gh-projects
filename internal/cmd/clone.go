@@ -33,6 +33,7 @@ func NewCloneCmd(globalOpts *GlobalOptions, runFunc func(*cloneOptions) error) *
 	}
 
 	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Set the new title")
+	//nolint:errcheck
 	cmd.MarkFlagRequired("title")
 
 	cmd.Flags().BoolVar(&opts.drafts, "include-drafts", false, "Include draft issues")
