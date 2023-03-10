@@ -54,7 +54,6 @@ func view(opts *viewOptions) (err error) {
 
 	vars := map[string]interface{}{
 		"owner":        opts.Repo.Owner(),
-		"name":         opts.Repo.Name(),
 		"number":       opts.number,
 		"first":        opts.limit,
 		"includeItems": opts.items,
@@ -100,21 +99,23 @@ func view(opts *viewOptions) (err error) {
 }
 
 const queryRepositoryProjectV2 = `
-query RepositoryProjectV2($owner: String!, $name: String!, $number: Int!, $first: Int!, $after: String, $includeItems: Boolean = false) {
-	repository(name: $name, owner: $owner) {
-		projectV2(number: $number) {
-			id
-			number
-			title
-			description: shortDescription
-			body: readme
-			creator {
-				login
+query RepositoryProjectV2($owner: String!, $number: Int!, $first: Int!, $after: String, $includeItems: Boolean = false) {
+	repository: repositoryOwner(login: $owner) {
+		...on ProjectV2Owner {
+			projectV2(number: $number) {
+				id
+				number
+				title
+				description: shortDescription
+				body: readme
+				creator {
+					login
+				}
+				createdAt
+				public
+				url
+				...items @include(if: $includeItems)
 			}
-			createdAt
-			public
-			url
-			...items @include(if: $includeItems)
 		}
 	}
 }
